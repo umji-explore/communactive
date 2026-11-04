@@ -5,6 +5,32 @@ document.querySelectorAll("form[data-confirm]").forEach((form) => {
   });
 });
 
+// 중복 제출 방지 (버튼 연타로 글/댓글이 두 번 올라가는 것 막기)
+document.querySelectorAll("form[method=post]").forEach((form) => {
+  form.addEventListener("submit", (e) => {
+    if (e.defaultPrevented) return;
+    if (form.dataset.submitting) { e.preventDefault(); return; }
+    form.dataset.submitting = "1";
+    setTimeout(() => delete form.dataset.submitting, 4000);
+  });
+});
+
+// 글자 수 표시
+document.querySelectorAll("[data-counter]").forEach((el) => {
+  const out = document.getElementById(el.dataset.counter);
+  const update = () => { out.textContent = el.value.length.toLocaleString(); };
+  el.addEventListener("input", update);
+  update();
+});
+
+// 작성 중인 글이 있으면 페이지 이탈 경고
+document.querySelectorAll("form[data-unsaved]").forEach((form) => {
+  let dirty = false;
+  form.addEventListener("input", () => { dirty = true; });
+  form.addEventListener("submit", () => { dirty = false; });
+  window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+});
+
 // 댓글 커뮤콘 선택기
 (() => {
   const toggle = document.getElementById("con-toggle");

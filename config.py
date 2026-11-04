@@ -61,7 +61,7 @@ class Config:
     FACEBOOK_CLIENT_SECRET = os.environ.get("FACEBOOK_CLIENT_SECRET", "")
 
     # 개발용 로그인 (소셜 키 없이 테스트할 때만 켜기. 운영에서는 반드시 0)
-    DEV_LOGIN = os.environ.get("DEV_LOGIN", "0") == "1"
+    DEV_LOGIN = os.environ.get("DEV_LOGIN", "0") == "1" and not ON_VERCEL  # 배포 환경에선 절대 켜지지 않음
 
     # 포인트
     POINTS_POST = _int("POINTS_POST", 200)
@@ -75,6 +75,6 @@ class Config:
     COMMENT_COOLDOWN = _int("COMMENT_COOLDOWN", 10)
 
     # 인기글 / 베스트
-    POPULAR_MIN_UPVOTES = _int("POPULAR_MIN_UPVOTES", 3)  # 커뮤니 인기글 기준 추천 수
+    POPULAR_MIN_UPVOTES = _int("POPULAR_MIN_UPVOTES", 3)  # 커뮤니티 인기글 기준 추천 수
     REALTIME_HOURS = _int("REALTIME_HOURS", 3)            # 실시간 베스트 집계 시간
     POSTS_PER_PAGE = 20

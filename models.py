@@ -29,7 +29,7 @@ class User(db.Model):
 class SocialAccount(db.Model):
     """구글/네이버/페이스북 계정 연동. 한 유저가 여러 계정을 연동할 수 있다."""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     provider = db.Column(db.String(20), nullable=False)  # google / naver / facebook / dev
     provider_uid = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255))
@@ -42,7 +42,7 @@ class SocialAccount(db.Model):
 
 
 class Community(db.Model):
-    """커뮤니 (게시판)"""
+    """커뮤니티 (게시판)"""
     id = db.Column(db.Integer, primary_key=True)
     slug = db.Column(db.String(30), unique=True, nullable=False)
     name = db.Column(db.String(30), unique=True, nullable=False)
@@ -51,13 +51,13 @@ class Community(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
     creator = db.relationship("User")
-    posts = db.relationship("Post", backref="community", lazy="dynamic", cascade="all, delete-orphan")
+    posts = db.relationship("Post", back_populates="community", lazy="dynamic", cascade="all, delete-orphan")
 
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     views = db.Column(db.Integer, default=0, nullable=False)
@@ -66,8 +66,11 @@ class Post(db.Model):
     comment_count = db.Column(db.Integer, default=0, nullable=False)
     points_awarded = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime)
 
-    author = db.relationship("User")
+    # 목록에서 글쓴이/커뮤니티 이름을 함께 가져와 쿼리 수를 줄인다
+    author = db.relationship("User", lazy="joined")
+    community = db.relationship("Community", back_populates="posts", lazy="joined")
     comments = db.relationship("Comment", backref="post", cascade="all, delete-orphan", order_by="Comment.id")
     votes = db.relationship("Vote", backref="post", cascade="all, delete-orphan")
 
@@ -79,14 +82,14 @@ class Post(db.Model):
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     content = db.Column(db.Text, default="")
     con_item_id = db.Column(db.Integer, db.ForeignKey("con_item.id"))
     points_awarded = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
-    author = db.relationship("User")
-    con_item = db.relationship("ConItem")
+    author = db.relationship("User", lazy="joined")
+    con_item = db.relationship("ConItem", lazy="joined")
 
 
 class Vote(db.Model):
@@ -110,8 +113,9 @@ class ConPack(db.Model):
     sales_count = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
-    creator = db.relationship("User")
-    items = db.relationship("ConItem", backref="pack", cascade="all, delete-orphan", order_by="ConItem.sort_order")
+    creator = db.relationship("User", lazy="joined")
+    items = db.relationship("ConItem", backref="pack", cascade="all, delete-orphan",
+                            order_by="ConItem.sort_order", lazy="selectin")
 
     @property
     def thumbnail(self):
@@ -121,7 +125,7 @@ class ConPack(db.Model):
 class ConItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     pack_id = db.Column(db.Integer, db.ForeignKey("con_pack.id"), nullable=False, index=True)
-    path = db.Column(db.String(255), nullable=False)  # static 기준 상대 경로
+    path = db.Column(db.String(500), nullable=False)  # Blob URL 또는 static 기준 상대 경로
     sort_order = db.Column(db.Integer, default=0, nullable=False)
 
 
@@ -132,7 +136,7 @@ class UserConPack(db.Model):
     pack_id = db.Column(db.Integer, db.ForeignKey("con_pack.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
-    pack = db.relationship("ConPack")
+    pack = db.relationship("ConPack", lazy="joined")
 
     __table_args__ = (db.UniqueConstraint("user_id", "pack_id", name="uq_user_pack"),)
 

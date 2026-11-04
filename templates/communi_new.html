@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}커뮤니 만들기 - {% endblock %}
+{% block title %}커뮤니티 만들기 - {% endblock %}
 {% block content %}
 <section class="card narrow">
-  <h1 class="card-title">커뮤니 만들기</h1>
+  <h1 class="card-title">커뮤니티 만들기</h1>
+  <p class="muted">커뮤니티는 한 명당 하나만 만들 수 있어요. 신중하게 정해주세요!</p>
   <form method="post" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>커뮤니 이름
+    <label>커뮤니티 이름
       <input name="name" value="{{ form.name }}" maxlength="20" required placeholder="예: 고양이">
     </label>
     <label>주소

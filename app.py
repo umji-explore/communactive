@@ -1,5 +1,6 @@
 import os
 
+import click
 from flask import Flask, g, render_template, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -38,18 +39,43 @@ def create_app(config_class=Config):
     def inject_globals():
         return {"POINTS_POST": app.config["POINTS_POST"], "POINTS_COMMENT": app.config["POINTS_COMMENT"]}
 
+    @app.after_request
+    def security_headers(resp):
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if ON_VERCEL:
+            resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return resp
+
     @app.errorhandler(400)
     @app.errorhandler(403)
     @app.errorhandler(404)
     @app.errorhandler(413)
+    @app.errorhandler(500)
     def error_page(e):
+        code = getattr(e, "code", 500)
         messages = {
             403: "권한이 없습니다.",
             404: "페이지를 찾을 수 없습니다.",
             413: "업로드한 파일이 너무 큽니다.",
+            500: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
         }
-        msg = messages.get(e.code) or getattr(e, "description", "잘못된 요청입니다.")
-        return render_template("error.html", code=e.code, message=msg), e.code
+        if code == 500:
+            db.session.rollback()
+        msg = messages.get(code) if code != 400 else getattr(e, "description", None)
+        return render_template("error.html", code=code, message=msg or "잘못된 요청입니다."), code
+
+    @app.cli.command("make-admin")
+    @click.argument("nickname")
+    def make_admin(nickname):
+        """flask --app app make-admin <닉네임> : 관리자 지정 (모든 글/댓글 삭제 가능)"""
+        user = User.query.filter_by(nickname=nickname).first()
+        if not user:
+            raise click.ClickException(f"'{nickname}' 회원이 없습니다.")
+        user.is_admin = True
+        db.session.commit()
+        click.echo(f"{nickname} 님을 관리자로 지정했습니다.")
 
     with app.app_context():
         db.create_all()

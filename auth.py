@@ -2,10 +2,11 @@
 from authlib.integrations.flask_client import OAuth
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 
-from models import SocialAccount, User, db
+from models import PointLog, SocialAccount, User, UserConPack, db
 from utils import NICKNAME_RE, login_required, safe_next
 
 bp = Blueprint("auth", __name__)
+RESERVED_NICK_PREFIXES = ("탈퇴회원", "관리자", "운영자")
 oauth = OAuth()
 
 PROVIDERS = {
@@ -156,6 +157,8 @@ def signup():
             error = "이용약관에 동의해주세요."
         elif not NICKNAME_RE.match(nickname):
             error = "닉네임은 2~12자의 한글, 영문, 숫자, _ 만 쓸 수 있습니다."
+        elif nickname.startswith(RESERVED_NICK_PREFIXES) or nickname.lower() in {"admin", "communactive"}:
+            error = "사용할 수 없는 닉네임입니다."
         elif User.query.filter(db.func.lower(User.nickname) == nickname.lower()).first():
             error = "이미 사용 중인 닉네임입니다."
         elif SocialAccount.query.filter_by(provider=pending["provider"], provider_uid=pending["uid"]).first():
@@ -203,6 +206,28 @@ def dev_login():
 def logout():
     session.clear()
     flash("로그아웃되었습니다.", "info")
+    return redirect(url_for("main.home"))
+
+
+@bp.route("/me/withdraw", methods=["POST"])
+@login_required
+def withdraw():
+    """회원 탈퇴: 개인정보는 지우고, 글/댓글은 '탈퇴회원'으로 남긴다."""
+    if request.form.get("confirm") != g.user.nickname:
+        flash("확인을 위해 닉네임을 정확히 입력해주세요.", "error")
+        return redirect(url_for("main.mypage"))
+    user = g.user
+    for acc in list(user.social_accounts):
+        db.session.delete(acc)
+    PointLog.query.filter_by(user_id=user.id).delete()
+    UserConPack.query.filter_by(user_id=user.id).delete()
+    user.nickname = f"탈퇴회원{user.id}"
+    user.email = None
+    user.points = 0
+    user.is_admin = False
+    db.session.commit()
+    session.clear()
+    flash("탈퇴가 완료되었습니다. 그동안 이용해주셔서 감사합니다.", "info")
     return redirect(url_for("main.home"))
 
 

@@ -64,4 +64,15 @@
   </table>
   {{ pager(logs, 'main.mypage') }}
 </section>
+
+<details class="card withdraw">
+  <summary>회원 탈퇴</summary>
+  <p class="muted">탈퇴하면 이메일, 소셜 연동, 포인트, 보유 커뮤콘이 사라지고 되돌릴 수 없습니다.
+    작성한 글과 댓글은 "탈퇴회원"으로 남으니, 지우고 싶은 글은 먼저 삭제해주세요.</p>
+  <form method="post" action="{{ url_for('auth.withdraw') }}" class="row" data-confirm="정말 탈퇴할까요? 되돌릴 수 없습니다.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="confirm" placeholder="확인을 위해 닉네임 입력" required autocomplete="off">
+    <button class="btn btn-danger">탈퇴</button>
+  </form>
+</details>
 {% endblock %}

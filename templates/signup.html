@@ -12,7 +12,9 @@
       <small>2~12자 한글, 영문, 숫자, _</small>
     </label>
     <label class="check">
-      <input type="checkbox" name="agree" value="1"> 이용약관 및 개인정보 처리방침에 동의합니다.
+      <input type="checkbox" name="agree" value="1" required>
+      <span><a href="{{ url_for('main.terms') }}" target="_blank" class="u">이용약관</a> 및
+        <a href="{{ url_for('main.privacy') }}" target="_blank" class="u">개인정보처리방침</a>에 동의합니다.</span>
     </label>
     <button class="btn">가입하기</button>
   </form>

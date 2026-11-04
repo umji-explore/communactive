@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ post.title }} - {{ community.name }} - {% endblock %}
+{% block description %}{{ post.content|truncate(120, True, '…') }}{% endblock %}
 {% block content %}
 <div class="communi-head slim">
-  <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니</a></h1>
+  <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니티</a></h1>
   <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
 </div>
 
@@ -13,7 +14,7 @@
     <h2>{{ post.title }}</h2>
     <div class="post-meta">
       <span class="author">{{ post.author.nickname }}</span>
-      <span>{{ post.created_at|full_time }}</span>
+      <span>{{ post.created_at|full_time }}{% if post.updated_at %} <em class="edited" title="{{ post.updated_at|full_time }} 수정">(수정됨)</em>{% endif %}</span>
       <span class="sep">조회 {{ post.views|comma }}</span>
       <span>추천 {{ post.upvotes }}</span>
       <span>댓글 {{ post.comment_count }}</span>
@@ -34,8 +35,9 @@
     {% endfor %}
   </div>
 
-  {% if g.user and (g.user.id == post.user_id or g.user.is_admin) %}
-  <div class="right">
+  {% if can_manage %}
+  <div class="post-actions">
+    <a class="btn btn-light btn-sm" href="{{ url_for('board.edit', slug=community.slug, post_id=post.id) }}">수정</a>
     <form method="post" action="{{ url_for('board.delete_post', slug=community.slug, post_id=post.id) }}"
           data-confirm="글을 삭제할까요?{% if post.points_awarded %} 받은 {{ post.points_awarded }}P가 회수됩니다.{% endif %}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -49,7 +51,7 @@
   <h3 class="card-title">댓글 <span class="cmt">{{ post.comment_count }}</span></h3>
   <ul class="comment-list">
     {% for c in post.comments %}
-    <li class="{{ 'by-op' if c.user_id == post.user_id }}">
+    <li id="c{{ c.id }}" class="{{ 'by-op' if c.user_id == post.user_id }}">
       <div class="c-head">
         <span class="author">{{ c.author.nickname }}</span>
         {% if c.user_id == post.user_id %}<span class="op">글쓴이</span>{% endif %}

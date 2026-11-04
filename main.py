@@ -1,5 +1,5 @@
 """홈 (전체 베스트) / 마이페이지"""
-from flask import Blueprint, g, render_template, request
+from flask import Blueprint, Response, g, render_template, request
 
 from auth import PROVIDERS, enabled_providers
 from models import Comment, Community, ConPack, PointLog, Post, UserConPack, db
@@ -27,6 +27,22 @@ def home():
         new_cons=ConPack.query.order_by(ConPack.id.desc()).limit(6).all(),
         latest=Post.query.order_by(Post.id.desc()).limit(10).all(),
     )
+
+
+@bp.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
+@bp.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@bp.route("/robots.txt")
+def robots():
+    body = "User-agent: *\nDisallow: /me\nDisallow: /login\nDisallow: /signup\nDisallow: /auth/\n"
+    return Response(body, mimetype="text/plain")
 
 
 @bp.route("/me")

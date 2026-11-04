@@ -6,9 +6,9 @@ from functools import wraps
 
 from flask import abort, current_app, flash, g, redirect, request, session, url_for
 from markupsafe import Markup, escape
-from sqlalchemy import func
+from sqlalchemy import func, update
 
-from models import PointLog, Post, Vote, db, utcnow
+from models import PointLog, Post, User, Vote, db, utcnow
 
 KST = timedelta(hours=9)
 NICKNAME_RE = re.compile(r"^[가-힣a-zA-Z0-9_]{2,12}$")
@@ -27,7 +27,8 @@ def login_required(view):
 
 
 def safe_next(target, fallback="/"):
-    if target and target.startswith("/") and not target.startswith("//"):
+    """오픈 리다이렉트 방지: 우리 사이트 내부 경로만 허용"""
+    if target and target.startswith("/") and not target.startswith(("//", "/\\")) and "\\" not in target:
         return target
     return fallback
 
@@ -52,8 +53,21 @@ def check_csrf():
 # ---------- 포인트 ----------
 
 def add_points(user, amount, kind, reason=""):
-    user.points += amount
+    # SQL 식으로 더해서 동시에 여러 요청이 와도 포인트가 꼬이지 않게 한다 (points = points + amount)
+    user.points = User.points + amount
     db.session.add(PointLog(user_id=user.id, amount=amount, kind=kind, reason=reason[:200]))
+    db.session.flush()  # 같은 요청에서 다시 호출돼도 식이 덮어써지지 않게 바로 반영
+
+
+def spend_points(user, amount, kind, reason=""):
+    """포인트가 충분할 때만 차감. 성공하면 True."""
+    result = db.session.execute(
+        update(User).where(User.id == user.id, User.points >= amount).values(points=User.points - amount)
+    )
+    if result.rowcount != 1:
+        return False
+    db.session.add(PointLog(user_id=user.id, amount=-amount, kind=kind, reason=reason[:200]))
+    return True
 
 
 def earned_today(user, kind):
@@ -120,7 +134,7 @@ def popular_filter(query):
 
 
 def community_popular(community, limit=5):
-    """커뮤니 상단 인기글: 최근 7일 내 추천 기준 이상 글"""
+    """커뮤니티 상단 인기글: 최근 7일 내 추천 기준 이상 글"""
     since = utcnow() - timedelta(days=7)
     q = popular_filter(Post.query.filter(Post.community_id == community.id, Post.created_at >= since))
     return q.order_by(Post.upvotes.desc(), Post.id.desc()).limit(limit).all()
@@ -133,20 +147,37 @@ def kst(dt):
 
 
 def short_time(dt):
-    """목록용: 오늘이면 HH:MM, 아니면 MM.DD"""
+    """목록용: 방금 전 / n분 전 / n시간 전 / 올해면 MM.DD / 그 이전은 YY.MM.DD"""
     if not dt:
         return ""
+    seconds = (utcnow() - dt).total_seconds()
+    if seconds < 60:
+        return "방금 전"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}분 전"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}시간 전"
     local = kst(dt)
-    today = kst(utcnow()).date()
-    return local.strftime("%H:%M") if local.date() == today else local.strftime("%m.%d")
+    return local.strftime("%m.%d") if local.year == kst(utcnow()).year else local.strftime("%y.%m.%d")
 
 
 def full_time(dt):
     return kst(dt).strftime("%Y.%m.%d %H:%M") if dt else ""
 
 
+URL_RE = re.compile(r"https?://[^\s<>\"']+")
+
+
 def nl2br(text):
-    return Markup("<br>".join(escape(text or "").split("\n")))
+    """줄바꿈을 <br>로, http(s) 주소는 링크로. 먼저 escape 하므로 HTML 주입은 불가능."""
+    escaped = str(escape(text or ""))
+
+    def link(m):
+        url = m.group(0).rstrip(".,)!?")
+        rest = m.group(0)[len(url):]
+        return f'<a href="{url}" target="_blank" rel="noopener nofollow ugc">{url}</a>{rest}'
+
+    return Markup(URL_RE.sub(link, escaped).replace("\n", "<br>"))
 
 
 def con_url(path):
@@ -161,5 +192,5 @@ def register_template_helpers(app):
     app.jinja_env.filters["short_time"] = short_time
     app.jinja_env.filters["full_time"] = full_time
     app.jinja_env.filters["nl2br"] = nl2br
-    app.jinja_env.filters["comma"] = lambda n: f"{n:,}"
+    app.jinja_env.filters["comma"] = lambda n: f"{n or 0:,}"
     app.jinja_env.globals["csrf_token"] = csrf_token

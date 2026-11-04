@@ -5,8 +5,10 @@ import uuid
 
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 
+from sqlalchemy.exc import IntegrityError
+
 from models import ConItem, ConPack, UserConPack, db
-from utils import add_points, login_required
+from utils import login_required, spend_points
 
 bp = Blueprint("cons", __name__, url_prefix="/con")
 
@@ -66,15 +68,20 @@ def buy(pack_id):
     pack = db.session.get(ConPack, pack_id) or abort(404)
     if g.user.owns_pack(pack.id):
         flash("이미 보유한 커뮤콘입니다.", "info")
-    elif g.user.points < pack.price:
-        flash(f"포인트가 부족합니다. ({g.user.points:,}P / {pack.price:,}P 필요)", "error")
-    else:
-        if pack.price:
-            add_points(g.user, -pack.price, "con_buy", f"커뮤콘 구매: {pack.name}")
+        return redirect(url_for("cons.detail", pack_id=pack.id))
+    have = g.user.points
+    try:
+        if pack.price and not spend_points(g.user, pack.price, "con_buy", f"커뮤콘 구매: {pack.name}"):
+            db.session.rollback()
+            flash(f"포인트가 부족합니다. ({have:,}P / {pack.price:,}P 필요)", "error")
+            return redirect(url_for("cons.detail", pack_id=pack.id))
         db.session.add(UserConPack(user_id=g.user.id, pack_id=pack.id))
-        pack.sales_count += 1
+        pack.sales_count = ConPack.sales_count + 1
         db.session.commit()
         flash(f"'{pack.name}'을(를) 구매했습니다! 이제 댓글에서 쓸 수 있어요.", "success")
+    except IntegrityError:  # 동시에 두 번 눌러서 이미 구매된 경우 → 전체 취소
+        db.session.rollback()
+        flash("이미 보유한 커뮤콘입니다.", "info")
     return redirect(url_for("cons.detail", pack_id=pack.id))
 
 

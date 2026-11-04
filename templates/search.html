@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import post_table, pager %}
+{% block title %}{% if q %}'{{ q }}' 검색 - {% else %}검색 - {% endif %}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1 class="card-title">전체 검색</h1>
+  <form class="search" method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="검색어 (2자 이상)" minlength="2" autofocus>
+    <button class="btn">검색</button>
+  </form>
+  {% if q and q|length < 2 %}
+    <p class="empty">검색어를 2자 이상 입력해주세요.</p>
+  {% elif pagination %}
+    {% if communities %}
+    <ul class="communi-chips search-communis">
+      {% for c in communities %}<li><a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }} 커뮤니티</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+    <p class="muted">글 {{ pagination.total|comma }}개</p>
+    {{ post_table(pagination.items, show_communi=True) }}
+    {{ pager(pagination, 'board.search', q=q) }}
+  {% endif %}
+</section>
+{% endblock %}

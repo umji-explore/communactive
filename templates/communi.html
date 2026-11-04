@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import post_table, pager %}
-{% block title %}{{ community.name }} 커뮤니 - {% endblock %}
+{% block title %}{{ community.name }} 커뮤니티 - {% endblock %}
 {% block content %}
 <div class="communi-head">
   <div>
-    <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니</a></h1>
+    <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니티</a></h1>
     <p>{{ community.description }}</p>
   </div>
   <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
