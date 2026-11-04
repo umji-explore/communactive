@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import con_thumb, pager %}
+{% block title %}커뮤콘 상점 - {% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <h1 class="card-title">커뮤콘 상점</h1>
+    <a class="btn" href="{{ url_for('cons.new') }}">+ 커뮤콘 만들기</a>
+  </div>
+  <p class="muted">글 작성 +{{ POINTS_POST }}P, 댓글 +{{ POINTS_COMMENT }}P로 모은 포인트로 커뮤콘을 사서 댓글에 써보세요.
+    {% if g.user %}현재 <strong>{{ g.user.points|comma }}P</strong> 보유 중.{% endif %}</p>
+  <div class="tabs">
+    <a href="{{ url_for('cons.shop') }}" class="{{ 'on' if sort != 'popular' }}">신규</a>
+    <a href="{{ url_for('cons.shop', sort='popular') }}" class="{{ 'on' if sort == 'popular' }}">인기</a>
+  </div>
+  <div class="con-grid">
+    {% for pack in pagination.items %}
+      <div class="con-wrap {{ 'owned' if pack.id in owned }}">{{ con_thumb(pack) }}</div>
+    {% else %}
+      <p class="empty">아직 커뮤콘이 없어요. 첫 커뮤콘을 만들어보세요!</p>
+    {% endfor %}
+  </div>
+  {{ pager(pagination, 'cons.shop', sort=sort) }}
+</section>
+{% endblock %}

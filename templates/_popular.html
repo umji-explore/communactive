@@ -1,0 +1,17 @@
+<section class="card popular">
+  <h2 class="card-title"><span class="badge b-live">인기글</span>
+    <small>최근 7일 · 추천 {{ config.POPULAR_MIN_UPVOTES }}개 이상</small></h2>
+  {% if popular %}
+  <ul class="popular-list">
+    {% for p in popular %}
+    <li>
+      <a href="{{ url_for('board.post', slug=community.slug, post_id=p.id) }}">{{ p.title }}</a>
+      {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
+      <span class="up">▲{{ p.upvotes }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">아직 인기글이 없어요. 좋은 글에 추천을 눌러주세요!</p>
+  {% endif %}
+</section>

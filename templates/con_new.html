@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}커뮤콘 만들기 - {% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1 class="card-title">커뮤콘 만들기</h1>
+  <p class="muted">직접 그린 이모티콘을 올리고 가격을 정하세요. 만든 콘은 자동으로 내 것이 됩니다.</p>
+  <form method="post" enctype="multipart/form-data" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>이름
+      <input name="name" value="{{ form.name }}" maxlength="40" required placeholder="예: 말랑 고양이콘">
+    </label>
+    <label>설명
+      <textarea name="description" maxlength="300" rows="3">{{ form.description }}</textarea>
+    </label>
+    <label>가격 (포인트)
+      <input type="number" name="price" value="{{ form.price }}" min="0" max="{{ config.CON_MAX_PRICE }}" step="10" required>
+      <small>0이면 무료</small>
+    </label>
+    <label>이미지
+      <input type="file" name="images" id="con-files" multiple required accept="image/png,image/gif,image/jpeg,image/webp">
+      <small>PNG / GIF / JPG / WEBP, 장당 최대 {{ config.CON_MAX_FILE_SIZE // 1024 }}KB, 최대 {{ config.CON_MAX_FILES }}개. 첫 번째 이미지가 대표 이미지가 됩니다.</small>
+    </label>
+    <div class="con-items-preview" id="con-file-preview"></div>
+    <button class="btn">등록하기</button>
+  </form>
+</section>
+{% endblock %}

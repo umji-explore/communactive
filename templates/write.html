@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}글쓰기 - {{ community.name }} - {% endblock %}
+{% block content %}
+<section class="card">
+  <h1 class="card-title">{{ community.name }} 커뮤니 · 글쓰기</h1>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="title" value="{{ title }}" maxlength="100" required placeholder="제목을 입력하세요">
+    <textarea name="content" rows="16" maxlength="20000" required placeholder="내용을 입력하세요">{{ content }}</textarea>
+    <div class="form-actions">
+      <span class="hint">글을 등록하면 <strong>+{{ POINTS_POST }}P</strong>를 받아요. (삭제 시 회수)</span>
+      <a class="btn btn-light" href="{{ url_for('board.communi', slug=community.slug) }}">취소</a>
+      <button class="btn">등록</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

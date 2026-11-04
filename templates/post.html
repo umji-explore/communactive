@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} - {{ community.name }} - {% endblock %}
+{% block content %}
+<div class="communi-head slim">
+  <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니</a></h1>
+  <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
+</div>
+
+{% include "_popular.html" %}
+
+<article class="card post-view">
+  <header class="post-head">
+    <h2>{{ post.title }}</h2>
+    <div class="post-meta">
+      <span class="author">{{ post.author.nickname }}</span>
+      <span>{{ post.created_at|full_time }}</span>
+      <span class="sep">조회 {{ post.views|comma }}</span>
+      <span>추천 {{ post.upvotes }}</span>
+      <span>댓글 {{ post.comment_count }}</span>
+    </div>
+  </header>
+  <div class="post-body">{{ post.content|nl2br }}</div>
+
+  <div class="vote" id="vote">
+    {% for kind, label, count, sym in [('up', '추천', post.upvotes, '▲'), ('down', '비추천', post.downvotes, '▼')] %}
+    <form method="post" action="{{ url_for('board.vote', slug=community.slug, post_id=post.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="value" value="{{ kind }}">
+      <button class="vote-btn {{ kind }} {{ 'chosen' if (my_vote == 1 and kind == 'up') or (my_vote == -1 and kind == 'down') }}"
+              {{ 'disabled' if my_vote is not none or (g.user and g.user.id == post.user_id) }}>
+        <span class="sym">{{ sym }}</span><strong>{{ count }}</strong><small>{{ label }}</small>
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+
+  {% if g.user and (g.user.id == post.user_id or g.user.is_admin) %}
+  <div class="right">
+    <form method="post" action="{{ url_for('board.delete_post', slug=community.slug, post_id=post.id) }}"
+          data-confirm="글을 삭제할까요?{% if post.points_awarded %} 받은 {{ post.points_awarded }}P가 회수됩니다.{% endif %}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-light btn-sm">삭제</button>
+    </form>
+  </div>
+  {% endif %}
+</article>
+
+<section class="card comments" id="comments">
+  <h3 class="card-title">댓글 <span class="cmt">{{ post.comment_count }}</span></h3>
+  <ul class="comment-list">
+    {% for c in post.comments %}
+    <li class="{{ 'by-op' if c.user_id == post.user_id }}">
+      <div class="c-head">
+        <span class="author">{{ c.author.nickname }}</span>
+        {% if c.user_id == post.user_id %}<span class="op">글쓴이</span>{% endif %}
+        <span class="time">{{ c.created_at|full_time }}</span>
+        {% if g.user and (g.user.id == c.user_id or g.user.is_admin) %}
+        <form method="post" action="{{ url_for('board.delete_comment', comment_id=c.id) }}" class="inline"
+              data-confirm="댓글을 삭제할까요?{% if c.points_awarded %} 받은 {{ c.points_awarded }}P가 회수됩니다.{% endif %}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="link-btn">삭제</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if c.con_item %}<img class="con-in-comment" src="{{ url_for('static', filename=c.con_item.path) }}" alt="커뮤콘">{% endif %}
+      {% if c.content %}<div class="c-body">{{ c.content|nl2br }}</div>{% endif %}
+    </li>
+    {% else %}
+    <li class="empty">첫 댓글을 남겨보세요.</li>
+    {% endfor %}
+  </ul>
+
+  {% if g.user %}
+  <form method="post" action="{{ url_for('board.comment', slug=community.slug, post_id=post.id) }}" class="comment-form" id="comment-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="con_id" id="con-id">
+    <div class="con-preview" id="con-preview" hidden>
+      <img alt=""><button type="button" class="link-btn" id="con-clear">✕ 선택 취소</button>
+    </div>
+    <textarea name="content" rows="3" maxlength="1000" placeholder="댓글을 입력하세요 (+{{ POINTS_COMMENT }}P)"></textarea>
+    <div class="form-actions">
+      <button type="button" class="btn btn-light" id="con-toggle">😀 커뮤콘</button>
+      <button class="btn">등록</button>
+    </div>
+
+    <div class="con-picker" id="con-picker" hidden>
+      {% if my_packs %}
+      <div class="con-tabs">
+        {% for pack in my_packs %}
+        <button type="button" class="con-tab {{ 'on' if loop.first }}" data-pack="{{ pack.id }}" title="{{ pack.name }}">
+          {% if pack.thumbnail %}<img src="{{ url_for('static', filename=pack.thumbnail.path) }}" alt="{{ pack.name }}">{% endif %}
+        </button>
+        {% endfor %}
+      </div>
+      {% for pack in my_packs %}
+      <div class="con-items" data-pack="{{ pack.id }}" {{ 'hidden' if not loop.first }}>
+        {% for item in pack.items %}
+        <button type="button" class="con-item" data-id="{{ item.id }}" data-src="{{ url_for('static', filename=item.path) }}">
+          <img src="{{ url_for('static', filename=item.path) }}" alt="" loading="lazy">
+        </button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="empty">보유한 커뮤콘이 없어요. <a href="{{ url_for('cons.shop') }}">커뮤콘 상점</a>에서 구매해보세요!</p>
+      {% endif %}
+    </div>
+  </form>
+  {% else %}
+  <p class="empty"><a href="{{ url_for('auth.login', next=request.path) }}">로그인</a>하고 댓글을 남겨보세요.</p>
+  {% endif %}
+</section>
+{% endblock %}

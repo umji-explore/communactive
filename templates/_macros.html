@@ -1,0 +1,80 @@
+{% macro best_list(title, posts, badge) %}
+<section class="card best">
+  <h2 class="card-title"><span class="badge {{ badge }}">{{ title }}</span></h2>
+  {% if posts %}
+  <ol class="rank-list">
+    {% for p in posts %}
+    <li>
+      <span class="rank {{ 'top' if loop.index <= 3 }}">{{ loop.index }}</span>
+      <a class="rank-title" href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
+        <span class="tag">{{ p.community.name }}</span>{{ p.title }}
+        {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
+      </a>
+      <span class="up">▲{{ p.upvotes }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="empty">아직 베스트 글이 없어요.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+
+{% macro post_table(posts, community=None, show_communi=False) %}
+<table class="post-table">
+  <thead>
+    <tr>
+      <th class="col-no">번호</th>
+      <th>제목</th>
+      <th class="col-author">글쓴이</th>
+      <th class="col-date">작성일</th>
+      <th class="col-num">조회</th>
+      <th class="col-num">추천</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in posts %}
+    <tr>
+      <td class="col-no">{{ p.id }}</td>
+      <td class="col-title">
+        <a href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
+          {% if show_communi %}<span class="tag">{{ p.community.name }}</span>{% endif %}
+          {% if p.upvotes >= config.POPULAR_MIN_UPVOTES %}<span class="hot">인기</span>{% endif %}
+          {{ p.title }}
+        </a>
+        {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
+        <div class="mobile-meta">{{ p.author.nickname }} · {{ p.created_at|short_time }} · 조회 {{ p.views }} · 추천 {{ p.upvotes }}</div>
+      </td>
+      <td class="col-author">{{ p.author.nickname }}</td>
+      <td class="col-date">{{ p.created_at|short_time }}</td>
+      <td class="col-num">{{ p.views }}</td>
+      <td class="col-num">{{ p.upvotes }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">글이 없습니다.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro pager(pagination, endpoint) %}
+{% if pagination.pages > 1 %}
+<nav class="pager">
+  {% if pagination.has_prev %}<a href="{{ url_for(endpoint, page=pagination.prev_num, **kwargs) }}">‹ 이전</a>{% endif %}
+  {% for n in pagination.iter_pages(left_edge=1, left_current=3, right_current=4, right_edge=1) %}
+    {% if n %}
+      {% if n == pagination.page %}<strong>{{ n }}</strong>{% else %}<a href="{{ url_for(endpoint, page=n, **kwargs) }}">{{ n }}</a>{% endif %}
+    {% else %}<span>…</span>{% endif %}
+  {% endfor %}
+  {% if pagination.has_next %}<a href="{{ url_for(endpoint, page=pagination.next_num, **kwargs) }}">다음 ›</a>{% endif %}
+</nav>
+{% endif %}
+{% endmacro %}
+
+{% macro con_thumb(pack) %}
+<a class="con-card" href="{{ url_for('cons.detail', pack_id=pack.id) }}">
+  {% if pack.thumbnail %}<img src="{{ url_for('static', filename=pack.thumbnail.path) }}" alt="" loading="lazy">{% endif %}
+  <div class="con-name">{{ pack.name }}</div>
+  <div class="con-meta">{{ pack.creator.nickname }} · {% if pack.price %}{{ pack.price|comma }}P{% else %}무료{% endif %}</div>
+</a>
+{% endmacro %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}회원가입 - {% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1 class="card-title">회원가입</h1>
+  <p class="muted"><strong>{{ provider_label }}</strong> 계정{% if pending.email %} ({{ pending.email }}){% endif %}으로 가입합니다.</p>
+  {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>닉네임
+      <input name="nickname" value="{{ suggested }}" required maxlength="12" autofocus>
+      <small>2~12자 한글, 영문, 숫자, _</small>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="agree" value="1"> 이용약관 및 개인정보 처리방침에 동의합니다.
+    </label>
+    <button class="btn">가입하기</button>
+  </form>
+</section>
+{% endblock %}

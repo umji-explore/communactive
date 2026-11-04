@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}커뮤니 목록 - {% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <h1 class="card-title">커뮤니 목록</h1>
+    <a class="btn" href="{{ url_for('board.communi_new') }}">+ 커뮤니 만들기</a>
+  </div>
+  <form class="search" method="get">
+    <input type="search" name="q" value="{{ q }}" placeholder="커뮤니 검색">
+    <button class="btn btn-light">검색</button>
+  </form>
+  <ul class="communi-list">
+    {% for c, cnt in rows %}
+    <li>
+      <a href="{{ url_for('board.communi', slug=c.slug) }}">
+        <strong>{{ c.name }}</strong>
+        <span class="desc">{{ c.description or "소개가 없습니다." }}</span>
+        <span class="count">글 {{ cnt|comma }}</span>
+      </a>
+    </li>
+    {% else %}
+    <li class="empty">{{ "검색 결과가 없습니다." if q else "아직 커뮤니가 없어요. 첫 커뮤니를 만들어보세요!" }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

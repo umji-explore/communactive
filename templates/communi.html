@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import post_table, pager %}
+{% block title %}{{ community.name }} 커뮤니 - {% endblock %}
+{% block content %}
+<div class="communi-head">
+  <div>
+    <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니</a></h1>
+    <p>{{ community.description }}</p>
+  </div>
+  <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
+</div>
+
+{% include "_popular.html" %}
+
+<section class="card">
+  <div class="card-head">
+    <div class="tabs">
+      <a href="{{ url_for('board.communi', slug=community.slug) }}" class="{{ 'on' if mode != 'best' }}">전체글</a>
+      <a href="{{ url_for('board.communi', slug=community.slug, mode='best') }}" class="{{ 'on' if mode == 'best' }}">인기글</a>
+    </div>
+    <form class="search inline-search" method="get">
+      {% if mode == 'best' %}<input type="hidden" name="mode" value="best">{% endif %}
+      <input type="search" name="q" value="{{ q }}" placeholder="글 검색">
+    </form>
+  </div>
+  {{ post_table(pagination.items, community) }}
+  {{ pager(pagination, 'board.communi', slug=community.slug, mode=mode, q=q) }}
+  <div class="right"><a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a></div>
+</section>
+{% endblock %}

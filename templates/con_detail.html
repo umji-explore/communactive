@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ pack.name }} - 커뮤콘 - {% endblock %}
+{% block content %}
+<section class="card">
+  <div class="con-detail-head">
+    {% if pack.thumbnail %}<img class="con-main" src="{{ url_for('static', filename=pack.thumbnail.path) }}" alt="">{% endif %}
+    <div class="con-info">
+      <h1>{{ pack.name }}</h1>
+      <p class="muted">제작 {{ pack.creator.nickname }} · 콘 {{ pack.items|length }}개 · 판매 {{ pack.sales_count|comma }}</p>
+      {% if pack.description %}<p>{{ pack.description }}</p>{% endif %}
+      <div class="price">{% if pack.price %}{{ pack.price|comma }}P{% else %}무료{% endif %}</div>
+      {% if owned %}
+        <span class="btn btn-light disabled">보유 중</span>
+      {% elif g.user %}
+        <form method="post" action="{{ url_for('cons.buy', pack_id=pack.id) }}" data-confirm="{{ pack.price|comma }}P로 '{{ pack.name }}'을(를) 구매할까요?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn" {{ 'disabled' if g.user.points < pack.price }}>구매하기</button>
+          <small class="muted">보유 {{ g.user.points|comma }}P</small>
+        </form>
+      {% else %}
+        <a class="btn" href="{{ url_for('auth.login', next=request.path) }}">로그인하고 구매하기</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="con-items-preview">
+    {% for item in pack.items %}<img src="{{ url_for('static', filename=item.path) }}" alt="" loading="lazy">{% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import best_list, post_table, con_thumb %}
+{% block content %}
+<div class="best-grid">
+  {{ best_list("실시간 베스트", realtime, "b-live") }}
+  {{ best_list("일간 베스트", daily, "b-day") }}
+  {{ best_list("주간 베스트", weekly, "b-week") }}
+</div>
+
+<div class="home-grid">
+  <section class="card">
+    <div class="card-head">
+      <h2 class="card-title">최신글</h2>
+    </div>
+    {{ post_table(latest, show_communi=True) }}
+  </section>
+
+  <aside>
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">커뮤니</h2>
+        <a class="more" href="{{ url_for('board.communi_list') }}">전체보기 ›</a>
+      </div>
+      <ul class="communi-chips">
+        {% for c, cnt in communities %}
+        <li><a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }} <small>{{ cnt }}</small></a></li>
+        {% else %}
+        <li class="empty">아직 커뮤니가 없어요.</li>
+        {% endfor %}
+      </ul>
+      <a class="btn btn-block" href="{{ url_for('board.communi_new') }}">+ 커뮤니 만들기</a>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title">새 커뮤콘</h2>
+        <a class="more" href="{{ url_for('cons.shop') }}">상점 ›</a>
+      </div>
+      <div class="con-grid small">
+        {% for pack in new_cons %}{{ con_thumb(pack) }}{% else %}<p class="empty">아직 커뮤콘이 없어요.</p>{% endfor %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
