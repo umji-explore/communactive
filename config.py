@@ -13,15 +13,39 @@ def _int(name, default):
         return default
 
 
-class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL",
-        "sqlite:///" + os.path.join(BASE_DIR, "instance", "communactive.db"),
-    )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+ON_VERCEL = bool(os.environ.get("VERCEL"))
 
-    # 업로드 (커뮤콘 이미지)
+
+def _database_url():
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        if ON_VERCEL:
+            raise RuntimeError("Vercel 에서는 DATABASE_URL (Neon Postgres) 이 필요합니다.")
+        return "sqlite:///" + os.path.join(BASE_DIR, "instance", "communactive.db")
+    # Neon 등은 postgres:// 로 주기 때문에 SQLAlchemy 용 드라이버 이름으로 바꿔준다
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
+def _secret_key():
+    key = os.environ.get("SECRET_KEY")
+    if not key and ON_VERCEL:
+        raise RuntimeError("Vercel 환경변수에 SECRET_KEY 를 설정하세요.")
+    return key or "dev-secret-change-me"
+
+
+class Config:
+    SECRET_KEY = _secret_key()
+    SQLALCHEMY_DATABASE_URI = _database_url()
+    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SESSION_COOKIE_SECURE = ON_VERCEL
+    PREFERRED_URL_SCHEME = "https" if ON_VERCEL else "http"
+
+    # 업로드 (커뮤콘 이미지): Vercel Blob 이 연결돼 있으면 Blob, 아니면 로컬 static/uploads
+    USE_BLOB = bool(os.environ.get("BLOB_READ_WRITE_TOKEN") or os.environ.get("BLOB_STORE_ID"))
     UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
     MAX_CONTENT_LENGTH = 40 * 1024 * 1024  # 요청 전체 최대 40MB
     CON_MAX_FILES = 30                      # 콘 하나당 최대 이미지 수

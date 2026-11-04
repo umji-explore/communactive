@@ -1,12 +1,13 @@
 import os
 
 from flask import Flask, g, render_template, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import auth
 import board
 import cons
 import main
-from config import Config
+from config import ON_VERCEL, Config
 from models import User, db
 from utils import check_csrf, register_template_helpers
 
@@ -14,8 +15,11 @@ from utils import check_csrf, register_template_helpers
 def create_app(config_class=Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
-    os.makedirs(app.instance_path, exist_ok=True)
-    os.makedirs(os.path.join(app.config["UPLOAD_DIR"], "cons"), exist_ok=True)
+    if not ON_VERCEL:  # Vercel 은 파일 시스템이 읽기 전용
+        os.makedirs(app.instance_path, exist_ok=True)
+        os.makedirs(os.path.join(app.config["UPLOAD_DIR"], "cons"), exist_ok=True)
+    else:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
     auth.init_oauth(app)

@@ -73,7 +73,7 @@
 
 {% macro con_thumb(pack) %}
 <a class="con-card" href="{{ url_for('cons.detail', pack_id=pack.id) }}">
-  {% if pack.thumbnail %}<img src="{{ url_for('static', filename=pack.thumbnail.path) }}" alt="" loading="lazy">{% endif %}
+  {% if pack.thumbnail %}<img src="{{ pack.thumbnail.path|con_url }}" alt="" loading="lazy">{% endif %}
   <div class="con-name">{{ pack.name }}</div>
   <div class="con-meta">{{ pack.creator.nickname }} · {% if pack.price %}{{ pack.price|comma }}P{% else %}무료{% endif %}</div>
 </a>

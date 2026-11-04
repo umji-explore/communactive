@@ -24,6 +24,23 @@ def sniff_image(head):
     return None
 
 
+CONTENT_TYPES = {"png": "image/png", "gif": "image/gif", "jpg": "image/jpeg", "webp": "image/webp"}
+
+
+def store_image(data, ext, pack_id, folder):
+    """이미지를 저장하고 ConItem.path 에 넣을 값을 돌려준다.
+    Vercel Blob 이 연결돼 있으면 Blob URL, 아니면 static 기준 로컬 경로."""
+    name = f"{uuid.uuid4().hex}.{ext}"
+    if current_app.config["USE_BLOB"]:
+        from vercel.blob.sync import put_blob
+        result = put_blob(f"cons/{pack_id}/{name}", data, access="public", content_type=CONTENT_TYPES[ext])
+        return result.url
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, name), "wb") as out:
+        out.write(data)
+    return f"uploads/cons/{pack_id}/{name}"
+
+
 @bp.route("/")
 def shop():
     sort = request.args.get("sort", "new")
@@ -106,18 +123,16 @@ def new():
             db.session.add(pack)
             db.session.flush()
             folder = os.path.join(cfg["UPLOAD_DIR"], "cons", str(pack.id))
-            os.makedirs(folder, exist_ok=True)
             try:
                 for i, (data, ext) in enumerate(images):
-                    name = f"{uuid.uuid4().hex}.{ext}"
-                    with open(os.path.join(folder, name), "wb") as out:
-                        out.write(data)
-                    db.session.add(ConItem(pack_id=pack.id, path=f"uploads/cons/{pack.id}/{name}", sort_order=i))
+                    path = store_image(data, ext, pack.id, folder)
+                    db.session.add(ConItem(pack_id=pack.id, path=path, sort_order=i))
                 db.session.add(UserConPack(user_id=g.user.id, pack_id=pack.id))  # 만든 사람은 자동 보유
                 db.session.commit()
             except Exception:
                 db.session.rollback()
-                shutil.rmtree(folder, ignore_errors=True)
+                if not cfg["USE_BLOB"]:
+                    shutil.rmtree(folder, ignore_errors=True)
                 raise
             flash(f"커뮤콘 '{pack.name}'이(가) 등록되었습니다!", "success")
             return redirect(url_for("cons.detail", pack_id=pack.id))

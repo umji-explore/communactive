@@ -3,7 +3,7 @@
 {% block content %}
 <section class="card">
   <div class="con-detail-head">
-    {% if pack.thumbnail %}<img class="con-main" src="{{ url_for('static', filename=pack.thumbnail.path) }}" alt="">{% endif %}
+    {% if pack.thumbnail %}<img class="con-main" src="{{ pack.thumbnail.path|con_url }}" alt="">{% endif %}
     <div class="con-info">
       <h1>{{ pack.name }}</h1>
       <p class="muted">제작 {{ pack.creator.nickname }} · 콘 {{ pack.items|length }}개 · 판매 {{ pack.sales_count|comma }}</p>
@@ -23,7 +23,7 @@
     </div>
   </div>
   <div class="con-items-preview">
-    {% for item in pack.items %}<img src="{{ url_for('static', filename=item.path) }}" alt="" loading="lazy">{% endfor %}
+    {% for item in pack.items %}<img src="{{ item.path|con_url }}" alt="" loading="lazy">{% endfor %}
   </div>
 </section>
 {% endblock %}

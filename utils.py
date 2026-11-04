@@ -149,7 +149,15 @@ def nl2br(text):
     return Markup("<br>".join(escape(text or "").split("\n")))
 
 
+def con_url(path):
+    """커뮤콘 이미지 주소: Blob 에 올린 건 전체 URL, 로컬/시드 이미지는 static 경로"""
+    if path.startswith(("http://", "https://")):
+        return path
+    return url_for("static", filename=path)
+
+
 def register_template_helpers(app):
+    app.jinja_env.filters["con_url"] = con_url
     app.jinja_env.filters["short_time"] = short_time
     app.jinja_env.filters["full_time"] = full_time
     app.jinja_env.filters["nl2br"] = nl2br
