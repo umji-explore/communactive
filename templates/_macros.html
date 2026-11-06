@@ -1,23 +1,19 @@
-{% macro best_list(title, posts, badge) %}
-<section class="card best">
-  <h2 class="card-title"><span class="badge {{ badge }}">{{ title }}</span></h2>
-  {% if posts %}
-  <ol class="rank-list">
-    {% for p in posts %}
-    <li>
-      <span class="rank {{ 'top' if loop.index <= 3 }}">{{ loop.index }}</span>
-      <a class="rank-title" href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
-        <span class="tag">{{ p.community.name }}</span>{{ p.title }}
-        {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
-      </a>
-      <span class="up">▲{{ p.upvotes }}</span>
-    </li>
-    {% endfor %}
-  </ol>
-  {% else %}
-  <p class="empty">아직 베스트 글이 없어요.</p>
-  {% endif %}
-</section>
+{% macro rank_list(posts) %}
+{% if posts %}
+<ol class="rank-list">
+  {% for p in posts %}
+  <li>
+    <span class="rank {{ 'top' if loop.index <= 3 }}">{{ loop.index }}</span>
+    <a class="rank-title" href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">{{ p.title }}</a>
+    {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
+    <span class="rank-communi">{{ p.community.name }}</span>
+    <span class="up">추천 {{ p.upvotes }}</span>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p class="empty">아직 베스트 글이 없습니다.</p>
+{% endif %}
 {% endmacro %}
 
 {% macro post_table(posts, community=None, show_communi=False) %}

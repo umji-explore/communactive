@@ -31,6 +31,18 @@ document.querySelectorAll("form[data-unsaved]").forEach((form) => {
   window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 });
 
+// 홈 베스트 탭 (실시간 / 일간 / 주간)
+document.querySelectorAll("[data-tabs]").forEach((box) => {
+  box.querySelectorAll("[data-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.tab;
+      box.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("on", b === btn));
+      box.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== key; });
+      box.querySelectorAll("[data-note]").forEach((n) => { n.hidden = n.dataset.note !== key; });
+    });
+  });
+});
+
 // 댓글 커뮤콘 선택기
 (() => {
   const toggle = document.getElementById("con-toggle");

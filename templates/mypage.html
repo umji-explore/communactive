@@ -10,39 +10,34 @@
       <div class="stat"><strong>{{ stats.posts }}</strong><small>작성글</small></div>
       <div class="stat"><strong>{{ stats.comments }}</strong><small>댓글</small></div>
     </div>
-    <p class="muted">가입일 {{ g.user.created_at|full_time }}</p>
+    <dl class="info-list">
+      <dt>이메일</dt><dd>{{ g.user.email }}</dd>
+      <dt>가입일</dt><dd>{{ g.user.created_at|full_time }}</dd>
+      <dt>내 커뮤니티</dt>
+      <dd>{% if stats.community %}<a class="u" href="{{ url_for('board.communi', slug=stats.community.slug) }}">{{ stats.community.name }}</a>
+          {% else %}<a class="u" href="{{ url_for('board.communi_new') }}">만들기</a> <span class="muted">(1인 1개)</span>{% endif %}</dd>
+    </dl>
   </section>
 
   <section class="card">
-    <h2 class="card-title">계정 연동</h2>
-    <ul class="linked">
-      {% for key, p in providers.items() %}
-      <li>
-        <span class="social-dot {{ p.color }}"></span> {{ p.label }}
-        {% if key in linked %}
-          <span class="ok">연동됨</span>
-          <form method="post" action="{{ url_for('auth.unlink', provider=key) }}" class="inline" data-confirm="{{ p.label }} 연동을 해제할까요?">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="link-btn">해제</button>
-          </form>
-        {% elif key in enabled %}
-          <a class="btn btn-light btn-sm" href="{{ url_for('auth.oauth_start', provider=key, link=1) }}">연동하기</a>
-        {% else %}
-          <span class="muted">미설정</span>
-        {% endif %}
-      </li>
-      {% endfor %}
-    </ul>
+    <h2 class="card-title">비밀번호 변경</h2>
+    <form method="post" action="{{ url_for('auth.change_password') }}" class="form compact">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="password" name="current" placeholder="현재 비밀번호" required autocomplete="current-password" aria-label="현재 비밀번호">
+      <input type="password" name="password" placeholder="새 비밀번호 (8자 이상, 영문+숫자)" required minlength="8" autocomplete="new-password" aria-label="새 비밀번호">
+      <input type="password" name="password2" placeholder="새 비밀번호 확인" required minlength="8" autocomplete="new-password" aria-label="새 비밀번호 확인">
+      <div><button class="btn btn-sm">변경</button></div>
+    </form>
   </section>
 </div>
 
 <section class="card">
   <div class="card-head">
     <h2 class="card-title">내 커뮤콘</h2>
-    <a class="more" href="{{ url_for('cons.new') }}">+ 커뮤콘 만들기</a>
+    <a class="more" href="{{ url_for('cons.new') }}">커뮤콘 만들기 ›</a>
   </div>
   <div class="con-grid">
-    {% for pack in packs %}{{ con_thumb(pack) }}{% else %}<p class="empty">보유한 커뮤콘이 없어요.</p>{% endfor %}
+    {% for pack in packs %}{{ con_thumb(pack) }}{% else %}<p class="empty">보유한 커뮤콘이 없습니다.</p>{% endfor %}
   </div>
 </section>
 
@@ -67,11 +62,11 @@
 
 <details class="card withdraw">
   <summary>회원 탈퇴</summary>
-  <p class="muted">탈퇴하면 이메일, 소셜 연동, 포인트, 보유 커뮤콘이 사라지고 되돌릴 수 없습니다.
+  <p class="muted">탈퇴하면 이메일, 포인트, 보유 커뮤콘이 사라지고 되돌릴 수 없습니다.
     작성한 글과 댓글은 "탈퇴회원"으로 남으니, 지우고 싶은 글은 먼저 삭제해주세요.</p>
   <form method="post" action="{{ url_for('auth.withdraw') }}" class="row" data-confirm="정말 탈퇴할까요? 되돌릴 수 없습니다.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input name="confirm" placeholder="확인을 위해 닉네임 입력" required autocomplete="off">
+    <input type="password" name="password" placeholder="비밀번호 입력" required autocomplete="current-password" aria-label="비밀번호">
     <button class="btn btn-danger">탈퇴</button>
   </form>
 </details>

@@ -52,16 +52,19 @@ class Config:
     CON_MAX_FILE_SIZE = 1 * 1024 * 1024     # 이미지 1장당 최대 1MB
     CON_MAX_PRICE = 100000
 
-    # 소셜 로그인 (.env 에 키를 넣으면 해당 버튼이 활성화됨)
-    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
-    NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
-    NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
-    FACEBOOK_CLIENT_ID = os.environ.get("FACEBOOK_CLIENT_ID", "")
-    FACEBOOK_CLIENT_SECRET = os.environ.get("FACEBOOK_CLIENT_SECRET", "")
+    # 회원가입: 이 도메인의 이메일만 허용
+    ALLOWED_EMAIL_DOMAINS = ("gmail.com", "naver.com")
 
-    # 개발용 로그인 (소셜 키 없이 테스트할 때만 켜기. 운영에서는 반드시 0)
-    DEV_LOGIN = os.environ.get("DEV_LOGIN", "0") == "1" and not ON_VERCEL  # 배포 환경에선 절대 켜지지 않음
+    # 인증번호 메일 발송 (SMTP). 예) Gmail: smtp.gmail.com / 587 / 앱 비밀번호
+    SMTP_HOST = os.environ.get("SMTP_HOST", "")
+    SMTP_PORT = _int("SMTP_PORT", 587)
+    SMTP_USER = os.environ.get("SMTP_USER", "")
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "") or os.environ.get("SMTP_USER", "")
+    # SMTP 설정이 없을 때 인증번호를 화면에 보여줄지 (로컬 개발 전용, 배포 환경에선 절대 켜지지 않음)
+    MAIL_DEBUG_ECHO = not ON_VERCEL and not os.environ.get("SMTP_HOST")
+    EMAIL_CODE_TTL = 10 * 60      # 인증번호 유효 시간 (초)
+    EMAIL_CODE_RESEND = 60        # 재발송 대기 시간 (초)
 
     # 포인트
     POINTS_POST = _int("POINTS_POST", 200)

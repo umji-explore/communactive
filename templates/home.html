@@ -1,71 +1,98 @@
 {% extends "base.html" %}
-{% from "_macros.html" import best_list, post_table, con_thumb %}
+{% from "_macros.html" import rank_list, post_table, con_thumb %}
 {% block content %}
-{% if not g.user %}
-<section class="hero">
-  <div>
-    <h1>모두의 커뮤니티, <span>커뮤넥티브</span></h1>
-    <p>관심사마다 커뮤니티를 만들고, 글 쓰고 댓글 달며 포인트를 모아 직접 만든 커뮤콘으로 이야기하세요.</p>
-    <div class="hero-actions">
-      <a class="btn" href="{{ url_for('auth.login') }}">3초 만에 시작하기</a>
-      <a class="btn btn-ghost" href="{{ url_for('board.communi_list') }}">커뮤니티 둘러보기</a>
-    </div>
-  </div>
-  <ul class="hero-points">
-    <li><strong>+{{ POINTS_POST }}P</strong><span>글 작성</span></li>
-    <li><strong>+{{ POINTS_COMMENT }}P</strong><span>댓글 작성</span></li>
-    <li><strong>커뮤콘</strong><span>포인트로 구매</span></li>
-  </ul>
-</section>
-{% endif %}
-
-<div class="best-grid">
-  {{ best_list("실시간 베스트", realtime, "b-live") }}
-  {{ best_list("일간 베스트", daily, "b-day") }}
-  {{ best_list("주간 베스트", weekly, "b-week") }}
-</div>
-
 <div class="home-grid">
-  <section class="card">
-    <div class="card-head">
-      <h2 class="card-title">최신글</h2>
-    </div>
-    {% if latest %}
-      {{ post_table(latest, show_communi=True) }}
-    {% else %}
-      <div class="empty-state">
-        <p>아직 글이 없어요. 첫 글의 주인공이 되어보세요!</p>
-        <a class="btn" href="{{ url_for('board.communi_list') if communities else url_for('board.communi_new') }}">
-          {{ '커뮤니티에서 글쓰기' if communities else '첫 커뮤니티 만들기' }}</a>
+  <div class="home-main">
+    <section class="box best-box" data-tabs>
+      <div class="box-head">
+        <div class="box-tabs" role="tablist">
+          <button type="button" class="on" role="tab" data-tab="live">실시간 베스트</button>
+          <button type="button" role="tab" data-tab="day">일간 베스트</button>
+          <button type="button" role="tab" data-tab="week">주간 베스트</button>
+        </div>
+        <span class="box-note" data-note="live">최근 {{ config.REALTIME_HOURS }}시간 추천순</span>
+        <span class="box-note" data-note="day" hidden>오늘 올라온 글</span>
+        <span class="box-note" data-note="week" hidden>최근 7일</span>
       </div>
-    {% endif %}
-  </section>
-
-  <aside>
-    <section class="card">
-      <div class="card-head">
-        <h2 class="card-title">커뮤니티</h2>
-        <a class="more" href="{{ url_for('board.communi_list') }}">전체보기 ›</a>
-      </div>
-      <ul class="communi-chips">
-        {% for c, cnt in communities %}
-        <li><a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }} <small>{{ cnt }}</small></a></li>
-        {% else %}
-        <li class="empty">아직 커뮤니티가 없어요.</li>
-        {% endfor %}
-      </ul>
-      <a class="btn btn-block" href="{{ url_for('board.communi_new') }}">+ 커뮤니티 만들기</a>
+      <div data-panel="live">{{ rank_list(realtime) }}</div>
+      <div data-panel="day" hidden>{{ rank_list(daily) }}</div>
+      <div data-panel="week" hidden>{{ rank_list(weekly) }}</div>
     </section>
 
-    <section class="card">
-      <div class="card-head">
-        <h2 class="card-title">새 커뮤콘</h2>
+    <section class="box">
+      <div class="box-head">
+        <h2 class="box-title">최신글</h2>
+        <a class="more" href="{{ url_for('board.communi_list') }}">커뮤니티 전체 ›</a>
+      </div>
+      {% if latest %}
+        {{ post_table(latest, show_communi=True) }}
+      {% else %}
+        <p class="empty">아직 글이 없습니다.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="home-side">
+    <section class="box login-box">
+      {% if g.user %}
+        <div class="lb-user">
+          <strong>{{ g.user.nickname }}</strong>님
+          <span class="lb-points">{{ g.user.points|comma }}P</span>
+        </div>
+        <div class="lb-links">
+          <a href="{{ url_for('main.mypage') }}">마이페이지</a>
+          <a href="{{ url_for('cons.shop') }}">커뮤콘 상점</a>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link-btn">로그아웃</button>
+          </form>
+        </div>
+      {% else %}
+        <form method="post" action="{{ url_for('auth.login') }}" class="lb-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="lb-fields">
+            <input type="email" name="email" placeholder="이메일" autocomplete="email" required aria-label="이메일">
+            <input type="password" name="password" placeholder="비밀번호" autocomplete="current-password" required aria-label="비밀번호">
+          </div>
+          <button class="btn lb-submit">로그인</button>
+        </form>
+        <div class="lb-links">
+          <a href="{{ url_for('auth.signup') }}"><strong>회원가입</strong></a>
+          <a href="{{ url_for('auth.forgot') }}">비밀번호 찾기</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="box">
+      <div class="box-head">
+        <h2 class="box-title">흥한 커뮤니티</h2>
+        <a class="more" href="{{ url_for('board.communi_list') }}">전체 ›</a>
+      </div>
+      {% if hot %}
+      <ol class="hot-list">
+        {% for c, recent, total in hot %}
+        <li>
+          <span class="hot-rank">{{ loop.index }}</span>
+          <a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }}</a>
+          <span class="hot-count" title="최근 24시간 글 / 전체 글">{{ recent }}<small>/{{ total }}</small></span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <p class="empty">아직 커뮤니티가 없습니다.</p>
+      {% endif %}
+      <a class="btn btn-light btn-block" href="{{ url_for('board.communi_new') }}">커뮤니티 만들기</a>
+    </section>
+
+    <section class="box">
+      <div class="box-head">
+        <h2 class="box-title">새 커뮤콘</h2>
         <a class="more" href="{{ url_for('cons.shop') }}">상점 ›</a>
       </div>
       {% if new_cons %}
       <div class="con-grid small">{% for pack in new_cons %}{{ con_thumb(pack) }}{% endfor %}</div>
       {% else %}
-      <p class="empty">아직 커뮤콘이 없어요.<br><a class="u" href="{{ url_for('cons.new') }}">첫 커뮤콘 만들기</a></p>
+      <p class="empty">아직 커뮤콘이 없습니다.</p>
       {% endif %}
     </section>
   </aside>

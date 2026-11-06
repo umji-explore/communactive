@@ -13,32 +13,31 @@ def utcnow():
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nickname = db.Column(db.String(20), unique=True, nullable=False)
-    email = db.Column(db.String(255))
+    email = db.Column(db.String(255), unique=True)  # 탈퇴하면 NULL
+    password_hash = db.Column(db.String(255))
     points = db.Column(db.Integer, default=0, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
     last_post_at = db.Column(db.DateTime)
     last_comment_at = db.Column(db.DateTime)
-
-    social_accounts = db.relationship("SocialAccount", backref="user", cascade="all, delete-orphan")
+    # 로그인 실패 잠금 (비밀번호 무작위 대입 방지)
+    failed_logins = db.Column(db.Integer, default=0, nullable=False)
+    locked_until = db.Column(db.DateTime)
 
     def owns_pack(self, pack_id):
         return UserConPack.query.filter_by(user_id=self.id, pack_id=pack_id).first() is not None
 
 
-class SocialAccount(db.Model):
-    """구글/네이버/페이스북 계정 연동. 한 유저가 여러 계정을 연동할 수 있다."""
+class EmailCode(db.Model):
+    """이메일 인증번호 (회원가입 / 비밀번호 찾기)"""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
-    provider = db.Column(db.String(20), nullable=False)  # google / naver / facebook / dev
-    provider_uid = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255))
+    email = db.Column(db.String(255), nullable=False, index=True)
+    purpose = db.Column(db.String(20), nullable=False)  # signup / reset
+    code_hash = db.Column(db.String(255), nullable=False)
+    ip = db.Column(db.String(64), default="", index=True)  # 같은 IP에서 메일 폭탄 방지
+    attempts = db.Column(db.Integer, default=0, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
-
-    __table_args__ = (
-        db.UniqueConstraint("provider", "provider_uid", name="uq_social_provider_uid"),
-        db.UniqueConstraint("user_id", "provider", name="uq_social_user_provider"),
-    )
 
 
 class Community(db.Model):

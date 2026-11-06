@@ -23,7 +23,6 @@ def create_app(config_class=Config):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     db.init_app(app)
-    auth.init_oauth(app)
     register_template_helpers(app)
 
     for module in (main, auth, board, cons):

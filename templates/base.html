@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{% endblock %}communactive</title>
   {% set page_title = self.title() ~ "communactive" %}
-  <meta name="description" content="{% block description %}커뮤넥티브 - 누구나 만드는 커뮤니티, 실시간·일간·주간 베스트, 직접 만드는 커뮤콘{% endblock %}">
-  <meta name="theme-color" content="#3c3fb5">
+  <meta name="description" content="{% block description %}communactive - 누구나 만드는 커뮤니티, 실시간·일간·주간 베스트, 직접 만드는 커뮤콘{% endblock %}">
+  <meta name="theme-color" content="#262626">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="communactive">
   <meta property="og:title" content="{{ page_title }}">
@@ -16,38 +16,65 @@
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
   <link rel="icon" href="{{ url_for('static', filename='img/favicon-32.png') }}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
 </head>
 <body>
+{# 로고 옆 섹션 이름 (디시의 "dcinside | ○○ 갤러리" 처럼) #}
+{% set ep = request.endpoint or '' %}
+{% if community is defined and community %}
+  {% set section, section_url = community.name ~ ' 커뮤니티', url_for('board.communi', slug=community.slug) %}
+{% elif ep == 'board.search' %}
+  {% set section, section_url = '검색', url_for('board.search') %}
+{% elif ep.startswith('board.') %}
+  {% set section, section_url = '커뮤니티', url_for('board.communi_list') %}
+{% elif ep.startswith('cons.') %}
+  {% set section, section_url = '커뮤콘', url_for('cons.shop') %}
+{% elif ep == 'main.mypage' %}
+  {% set section, section_url = '마이페이지', url_for('main.mypage') %}
+{% elif ep.startswith('auth.') %}
+  {% set section, section_url = '회원', none %}
+{% else %}
+  {% set section, section_url = none, none %}
+{% endif %}
+
 <header class="topbar">
   <div class="wrap topbar-inner">
-    <a class="logo" href="{{ url_for('main.home') }}" aria-label="communactive 홈">
-      <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="" width="32" height="32">
-      <span class="wordmark">commun<em>active</em></span>
-    </a>
+    <div class="brand">
+      <a class="wordmark" href="{{ url_for('main.home') }}">communactive</a>
+      {% if section %}
+        <span class="brand-sep"></span>
+        {% if section_url %}<a class="brand-section" href="{{ section_url }}">{{ section }}</a>
+        {% else %}<span class="brand-section">{{ section }}</span>{% endif %}
+      {% endif %}
+    </div>
     <form class="top-search" action="{{ url_for('board.search') }}" method="get" role="search">
-      <input type="search" name="q" placeholder="전체 글 검색" value="{{ request.args.get('q', '') if request.endpoint == 'board.search' }}" aria-label="전체 글 검색">
+      <input type="search" name="q" placeholder="커뮤니티 통합검색" value="{{ request.args.get('q', '') if ep == 'board.search' }}" aria-label="통합검색">
+      <button aria-label="검색">검색</button>
     </form>
     <div class="userbox">
       {% if g.user %}
-        <a class="points" href="{{ url_for('main.mypage') }}" title="내 포인트">{{ g.user.points|comma }}P</a>
         <a class="nick" href="{{ url_for('main.mypage') }}">{{ g.user.nickname }}</a>
+        <a class="points" href="{{ url_for('main.mypage') }}" title="내 포인트">{{ g.user.points|comma }}P</a>
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="link-btn">로그아웃</button>
+          <button class="top-link">로그아웃</button>
         </form>
       {% else %}
-        <a class="btn btn-sm" href="{{ url_for('auth.login', next=request.full_path) }}">로그인</a>
+        <a class="top-link" href="{{ url_for('auth.login', next=request.full_path if ep not in ('auth.login', 'auth.signup', 'auth.forgot') else None) }}">로그인</a>
+        <span class="top-sep"></span>
+        <a class="top-link" href="{{ url_for('auth.signup') }}">회원가입</a>
       {% endif %}
     </div>
   </div>
-  <nav class="wrap nav" aria-label="주 메뉴">
-    <a href="{{ url_for('main.home') }}" class="{{ 'on' if request.endpoint == 'main.home' }}">홈</a>
-    <a href="{{ url_for('board.communi_list') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('board.') and request.endpoint != 'board.search' }}">커뮤니티</a>
-    <a href="{{ url_for('cons.shop') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('cons.') }}">커뮤콘</a>
-    <a href="{{ url_for('board.search') }}" class="nav-search {{ 'on' if request.endpoint == 'board.search' }}">검색</a>
-  </nav>
 </header>
+<nav class="menubar" aria-label="주 메뉴">
+  <div class="wrap menubar-inner">
+    <a href="{{ url_for('main.home') }}" class="{{ 'on' if ep == 'main.home' }}">홈</a>
+    <a href="{{ url_for('board.communi_list') }}" class="{{ 'on' if ep.startswith('board.') and ep != 'board.search' }}">커뮤니티</a>
+    <a href="{{ url_for('cons.shop') }}" class="{{ 'on' if ep.startswith('cons.') }}">커뮤콘</a>
+    <a href="{{ url_for('board.search') }}" class="menu-search {{ 'on' if ep == 'board.search' }}">검색</a>
+  </div>
+</nav>
 
 <main class="wrap">
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -60,13 +87,11 @@
 
 <footer class="footer">
   <div class="wrap">
-    <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="" width="20" height="20">
-    <span>© communactive</span>
     <a href="{{ url_for('main.terms') }}">이용약관</a>
     <a href="{{ url_for('main.privacy') }}"><strong>개인정보처리방침</strong></a>
-    <span class="muted">글 작성 +{{ POINTS_POST }}P · 댓글 +{{ POINTS_COMMENT }}P</span>
+    <span>Copyright © communactive. All rights reserved.</span>
   </div>
 </footer>
-<script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=3"></script>
 </body>
 </html>

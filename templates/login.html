@@ -1,29 +1,23 @@
 {% extends "base.html" %}
 {% block title %}로그인 - {% endblock %}
 {% block content %}
-<section class="card narrow center">
-  <h1 class="card-title">로그인 / 회원가입</h1>
-  <p class="muted">처음이라면 소셜 계정으로 로그인 후 닉네임만 정하면 가입 완료!</p>
-  <div class="social-buttons">
-    {% for key, p in providers.items() %}
-      {% if key in enabled %}
-      <a class="social {{ p.color }}" href="{{ url_for('auth.oauth_start', provider=key) }}">{{ p.label }}로 계속하기</a>
-      {% else %}
-      <span class="social {{ p.color }} disabled" title=".env 에 {{ key|upper }}_CLIENT_ID 를 설정하세요">{{ p.label }}로 계속하기 (미설정)</span>
-      {% endif %}
-    {% endfor %}
+<section class="box auth-box">
+  <h1 class="auth-title">로그인</h1>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>이메일
+      <input type="email" name="email" value="{{ email }}" required autofocus autocomplete="email" placeholder="example@gmail.com">
+    </label>
+    <label>비밀번호
+      <input type="password" name="password" required autocomplete="current-password">
+    </label>
+    <button class="btn btn-block">로그인</button>
+  </form>
+  <div class="auth-links">
+    <a href="{{ url_for('auth.forgot') }}">비밀번호 찾기</a>
+    <span class="dot"></span>
+    <a href="{{ url_for('auth.signup') }}"><strong>회원가입</strong></a>
   </div>
-
-  {% if dev_login %}
-  <div class="dev-login">
-    <h2>개발용 로그인</h2>
-    <p class="muted">DEV_LOGIN=1 일 때만 보입니다. 운영 서버에서는 꼭 끄세요.</p>
-    <form method="post" action="{{ url_for('auth.dev_login') }}" class="row">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input name="nickname" placeholder="닉네임" required maxlength="12">
-      <button class="btn">로그인</button>
-    </form>
-  </div>
-  {% endif %}
 </section>
 {% endblock %}
