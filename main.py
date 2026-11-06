@@ -1,7 +1,7 @@
 """홈 (전체 베스트) / 마이페이지 / 약관"""
 from datetime import timedelta
 
-from flask import Blueprint, Response, g, render_template, request
+from flask import Blueprint, Response, current_app, g, render_template, request, send_from_directory
 
 from models import Comment, Community, ConPack, PointLog, Post, UserConPack, db, utcnow
 from utils import login_required, period_best, realtime_best
@@ -44,6 +44,13 @@ def terms():
 @bp.route("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+@bp.route("/favicon.ico")
+def favicon():
+    # 브라우저와 검색엔진이 기본으로 찾는 주소
+    return send_from_directory(current_app.static_folder, "img/favicon.ico", mimetype="image/x-icon",
+                               max_age=86400)
 
 
 @bp.route("/robots.txt")

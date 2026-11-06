@@ -13,8 +13,10 @@
   <meta property="og:description" content="{{ self.description() }}">
   <meta property="og:image" content="{{ url_for('static', filename='img/og-image.png', _external=True) }}">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="{{ url_for('static', filename='img/favicon-32.png') }}" type="image/png" sizes="32x32">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  {# ?v= 숫자를 바꾸면 브라우저가 예전 아이콘 캐시를 버리고 새로 받는다 #}
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon-32.png') }}?v=5" type="image/png" sizes="32x32">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon-192.png') }}?v=5" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}?v=5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   {# 로고 글자 전용 폰트: 로고에 쓰는 글자만 받아서 아주 가볍다 #}
