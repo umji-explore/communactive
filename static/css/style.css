@@ -60,8 +60,13 @@ a.u { text-decoration: underline; text-underline-offset: 2px; }
 .topbar { background: var(--ink); color: #fff; }
 .topbar-inner { display: flex; align-items: center; gap: 24px; height: 58px; }
 .brand { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 0; }
-.wordmark { font-family: "Segoe UI", -apple-system, Arial, sans-serif; font-weight: 800; font-size: 23px; letter-spacing: -1px; color: #fff; }
+.wordmark {
+  font-family: "Montserrat", "Segoe UI", Arial, sans-serif; font-weight: 900; font-style: italic;
+  font-size: 26px; letter-spacing: -2px; line-height: 1; color: #fff; padding-right: 4px;
+}
+.wordmark span { color: #9a9a9a; }
 .wordmark:hover { text-decoration: none; }
+.wordmark:hover span { color: #b8b8b8; }
 .brand-sep { width: 1px; height: 16px; background: rgba(255,255,255,.35); }
 .brand-section { font-size: 16px; font-weight: 700; color: #e9e9e9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .top-search { flex: 1; max-width: 440px; display: flex; height: 36px; margin: 0 auto; }
@@ -360,7 +365,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--sub); }
 }
 @media (max-width: 640px) {
   .topbar-inner { gap: 10px; height: 52px; }
-  .wordmark { font-size: 19px; }
+  .wordmark { font-size: 21px; letter-spacing: -1.6px; }
   .brand-section { font-size: 14px; max-width: 120px; }
   .top-search { display: none; }
   .userbox { margin-left: auto; }
