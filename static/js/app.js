@@ -31,6 +31,27 @@ document.querySelectorAll("form[data-unsaved]").forEach((form) => {
   window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 });
 
+// 보안 코드 새로고침
+(() => {
+  const btn = document.getElementById("captcha-refresh");
+  const img = document.getElementById("captcha-img");
+  if (!btn || !img) return;
+  btn.addEventListener("click", () => {
+    img.src = img.src.split("?")[0] + "?t=" + Date.now();
+    const input = document.querySelector("input[name=captcha]");
+    if (input) { input.value = ""; input.focus(); }
+  });
+})();
+
+// 복사 버튼
+document.querySelectorAll("[data-copy]").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const text = document.getElementById(btn.dataset.copy).textContent.trim();
+    try { await navigator.clipboard.writeText(text); btn.textContent = "복사했어요!"; }
+    catch { btn.textContent = "직접 선택해서 복사해주세요"; }
+  });
+});
+
 // 홈 베스트 탭 (실시간 / 일간 / 주간)
 document.querySelectorAll("[data-tabs]").forEach((box) => {
   box.querySelectorAll("[data-tab]").forEach((btn) => {

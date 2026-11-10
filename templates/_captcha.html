@@ -1,0 +1,9 @@
+<label>보안 코드
+  <div class="captcha">
+    <img src="{{ url_for('captcha.image') }}?t={{ range(100000, 999999)|random }}" alt="보안 코드 그림" width="170" height="56" id="captcha-img">
+    <button type="button" class="btn btn-light btn-sm" id="captcha-refresh" title="다른 그림 보기">새로고침</button>
+  </div>
+  <input name="captcha" required maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false"
+         placeholder="그림 속 글자 5자리" class="captcha-input">
+  <small>대소문자는 구분하지 않아요.</small>
+</label>

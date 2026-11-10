@@ -6,6 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 import auth
 import board
+import captcha
 import cons
 import main
 from config import ON_VERCEL, Config
@@ -25,7 +26,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     register_template_helpers(app)
 
-    for module in (main, auth, board, cons):
+    for module in (main, auth, board, cons, captcha):
         app.register_blueprint(module.bp)
 
     @app.before_request

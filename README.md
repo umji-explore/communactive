@@ -10,14 +10,14 @@
 - **전체 검색**: 모든 커뮤니티의 글을 검색합니다.
 - **포인트**: 글 작성 +200P, 댓글 +50P. 글이나 댓글을 지우면 받은 포인트를 회수합니다.
 - **커뮤콘**: 회원이 이미지를 올려 직접 만들고 가격을 정합니다. 다른 회원은 포인트로 사서 댓글에 씁니다.
-- **회원가입 / 로그인**: gmail.com · naver.com 이메일만 가입 가능 (메일 인증번호 확인). 이메일 + 비밀번호 로그인, 비밀번호 찾기·변경, 회원 탈퇴. 로그인 5회 실패 시 10분 잠금
+- **회원가입 / 로그인**: 식별 코드(아이디) + 비밀번호 + 닉네임 + **보안 코드**(자동입력 방지 그림 글자). 가입 때 **복구 코드**를 한 번 보여주고, 비밀번호를 잊으면 그걸로 재설정. 로그인 5회 실패 시 10분 잠금, 같은 IP 1시간 3개까지 가입
 - 이용약관(`/terms`), 개인정보처리방침(`/privacy`)
 
 ## 로컬 실행
 ```powershell
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env      # 처음 한 번. 값 채우기 (SMTP 를 비워두면 인증번호가 화면에 표시됨)
+copy .env.example .env      # 처음 한 번. 값 채우기 (SECRET_KEY 만 있으면 됨)
 python app.py               # http://localhost:5000
 ```
 로컬에서는 SQLite(`instance/communactive.db`)와 `static/uploads/`를 씁니다.
@@ -29,12 +29,10 @@ python app.py               # http://localhost:5000
 | DB | Neon Postgres (Vercel Marketplace) | `DATABASE_URL` |
 | 커뮤콘 이미지 | Vercel Blob (public, `communactive-cons`) | `BLOB_READ_WRITE_TOKEN` |
 | 세션 | | `SECRET_KEY` |
-| 인증 메일 | Gmail / 네이버 SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` |
 
 ```powershell
 vercel --prod
 ```
-인증 메일용 SMTP 설정 방법은 `.env.example` 에 적혀 있습니다. (Gmail 은 2단계 인증 후 "앱 비밀번호" 사용)
 
 ## 관리자 지정
 관리자는 모든 글과 댓글을 삭제할 수 있고, 커뮤니티 개수 제한을 받지 않습니다.
@@ -49,10 +47,10 @@ flask --app app make-admin <닉네임>
 | `app.py` | 앱 생성, 보안 헤더, 에러 페이지, 관리자 명령 |
 | `config.py` | 설정 (포인트 액수, 인기글 기준, DB/Blob 감지) |
 | `models.py` | DB 모델 |
-| `auth.py` | 이메일 회원가입·로그인 / 비밀번호 찾기 / 탈퇴 |
+| `auth.py` | 회원가입·로그인 / 복구 코드로 비밀번호 찾기 / 탈퇴 |
 | `board.py` | 커뮤니티, 글, 댓글, 추천, 검색 |
 | `cons.py` | 커뮤콘 상점 / 만들기 / 구매 |
-| `mailer.py` | 인증번호 메일 발송 (SMTP) |
+| `captcha.py` | 보안 코드 (자동입력 방지 이미지) |
 | `main.py` | 홈 (베스트), 마이페이지, 약관 |
 | `utils.py` | 포인트, 베스트 집계, CSRF, 템플릿 필터 |
 | `static/img/` | 파비콘, 공유 이미지 |

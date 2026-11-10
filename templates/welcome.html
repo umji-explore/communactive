@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}복구 코드 - {% endblock %}
+{% block content %}
+<section class="box auth-box">
+  <h1 class="auth-title">복구 코드를 저장해주세요</h1>
+  <p class="small">비밀번호를 잊었을 때 이 코드로만 다시 설정할 수 있어요.
+    <strong>이 화면은 다시 볼 수 없으니</strong> 캡처하거나 메모해두세요.</p>
+  <div class="recovery-code" id="recovery-code">{{ code }}</div>
+  <button type="button" class="btn btn-light btn-block" data-copy="recovery-code">복사하기</button>
+  <ul class="small muted recovery-notes">
+    <li>다른 사람에게 알려주지 마세요. 이 코드만 있으면 비밀번호를 바꿀 수 있어요.</li>
+    <li>잃어버렸다면 로그인한 상태에서 마이페이지에서 새로 발급받을 수 있어요.</li>
+  </ul>
+  <a class="btn btn-block" href="{{ url_for('main.home') }}">저장했어요, 시작하기</a>
+</section>
+{% endblock %}

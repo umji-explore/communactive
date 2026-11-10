@@ -11,7 +11,7 @@
       <div class="stat"><strong>{{ stats.comments }}</strong><small>댓글</small></div>
     </div>
     <dl class="info-list">
-      <dt>이메일</dt><dd>{{ g.user.email }}</dd>
+      <dt>식별 코드</dt><dd>{{ g.user.username }}</dd>
       <dt>가입일</dt><dd>{{ g.user.created_at|full_time }}</dd>
       <dt>내 커뮤니티</dt>
       <dd>{% if stats.community %}<a class="u" href="{{ url_for('board.communi', slug=stats.community.slug) }}">{{ stats.community.name }}</a>
@@ -27,6 +27,13 @@
       <input type="password" name="password" placeholder="새 비밀번호 (8자 이상, 영문+숫자)" required minlength="8" autocomplete="new-password" aria-label="새 비밀번호">
       <input type="password" name="password2" placeholder="새 비밀번호 확인" required minlength="8" autocomplete="new-password" aria-label="새 비밀번호 확인">
       <div><button class="btn btn-sm">변경</button></div>
+    </form>
+    <h2 class="card-title sub-title">복구 코드 새로 받기</h2>
+    <p class="muted small">복구 코드를 잃어버렸다면 새로 받으세요. 예전 코드는 쓸 수 없게 돼요.</p>
+    <form method="post" action="{{ url_for('auth.regenerate_recovery') }}" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="password" name="password" placeholder="비밀번호 확인" required autocomplete="current-password" aria-label="비밀번호 확인">
+      <button class="btn btn-light btn-sm">새로 받기</button>
     </form>
   </section>
 </div>
@@ -62,7 +69,7 @@
 
 <details class="card withdraw">
   <summary>회원 탈퇴</summary>
-  <p class="muted">탈퇴하면 이메일, 포인트, 보유 커뮤콘이 사라지고 되돌릴 수 없습니다.
+  <p class="muted">탈퇴하면 식별 코드, 포인트, 보유 커뮤콘이 사라지고 되돌릴 수 없습니다.
     작성한 글과 댓글은 "탈퇴회원"으로 남으니, 지우고 싶은 글은 먼저 삭제해주세요.</p>
   <form method="post" action="{{ url_for('auth.withdraw') }}" class="row" data-confirm="정말 탈퇴할까요? 되돌릴 수 없습니다.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -52,19 +52,6 @@ class Config:
     CON_MAX_FILE_SIZE = 1 * 1024 * 1024     # 이미지 1장당 최대 1MB
     CON_MAX_PRICE = 100000
 
-    # 회원가입: 이 도메인의 이메일만 허용
-    ALLOWED_EMAIL_DOMAINS = ("gmail.com", "naver.com")
-
-    # 인증번호 메일 발송 (SMTP). 예) Gmail: smtp.gmail.com / 587 / 앱 비밀번호
-    SMTP_HOST = os.environ.get("SMTP_HOST", "")
-    SMTP_PORT = _int("SMTP_PORT", 587)
-    SMTP_USER = os.environ.get("SMTP_USER", "")
-    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-    MAIL_FROM = os.environ.get("MAIL_FROM", "") or os.environ.get("SMTP_USER", "")
-    # SMTP 설정이 없을 때 인증번호를 화면에 보여줄지 (로컬 개발 전용, 배포 환경에선 절대 켜지지 않음)
-    MAIL_DEBUG_ECHO = not ON_VERCEL and not os.environ.get("SMTP_HOST")
-    EMAIL_CODE_TTL = 10 * 60      # 인증번호 유효 시간 (초)
-    EMAIL_CODE_RESEND = 60        # 재발송 대기 시간 (초)
 
     # 포인트
     POINTS_POST = _int("POINTS_POST", 200)

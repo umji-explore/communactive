@@ -12,9 +12,11 @@ def utcnow():
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20), unique=True)  # 식별 코드 (로그인 아이디, 소문자). 탈퇴하면 NULL
     nickname = db.Column(db.String(20), unique=True, nullable=False)
-    email = db.Column(db.String(255), unique=True)  # 탈퇴하면 NULL
     password_hash = db.Column(db.String(255))
+    recovery_hash = db.Column(db.String(255))  # 비밀번호 찾기용 복구 코드 (해시만 저장)
+    signup_ip = db.Column(db.String(64), default="", index=True)
     points = db.Column(db.Integer, default=0, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
@@ -26,18 +28,6 @@ class User(db.Model):
 
     def owns_pack(self, pack_id):
         return UserConPack.query.filter_by(user_id=self.id, pack_id=pack_id).first() is not None
-
-
-class EmailCode(db.Model):
-    """이메일 인증번호 (회원가입 / 비밀번호 찾기)"""
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), nullable=False, index=True)
-    purpose = db.Column(db.String(20), nullable=False)  # signup / reset
-    code_hash = db.Column(db.String(255), nullable=False)
-    ip = db.Column(db.String(64), default="", index=True)  # 같은 IP에서 메일 폭탄 방지
-    attempts = db.Column(db.Integer, default=0, nullable=False)
-    expires_at = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
 
 class Community(db.Model):
