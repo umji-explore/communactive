@@ -1,10 +1,23 @@
 {% extends "base.html" %}
-{% from "_macros.html" import con_thumb, pager %}
+{% from "_macros.html" import con_thumb, pager, avatar %}
 {% block title %}마이페이지 - {% endblock %}
 {% block content %}
 <div class="my-grid">
   <section class="card">
-    <h1 class="card-title">{{ g.user.nickname }}</h1>
+    <div class="profile-head">
+      <div class="img-preview avatar-preview" id="avatar-preview">{{ avatar(g.user, 72) }}</div>
+      <div>
+        <h1 class="card-title">{{ g.user.nickname }}</h1>
+        <form method="post" action="{{ url_for('main.set_avatar') }}" class="avatar-form" id="avatar-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="avatar_id" id="avatar-id">
+          <label class="btn btn-light btn-sm file-btn">프로필 사진 바꾸기
+            <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-upload="avatar" data-target="avatar" data-autosubmit="avatar-form" hidden>
+          </label>
+          {% if g.user.avatar %}<button class="link-btn small" name="remove" value="1">사진 지우기</button>{% endif %}
+        </form>
+      </div>
+    </div>
     <div class="stat-row">
       <div class="stat"><strong>{{ g.user.points|comma }}P</strong><small>보유 포인트</small></div>
       <div class="stat"><strong>{{ stats.posts }}</strong><small>작성글</small></div>

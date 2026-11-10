@@ -31,6 +31,150 @@ document.querySelectorAll("form[data-unsaved]").forEach((form) => {
   window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 });
 
+// ---------- 사진 업로드 (한 장씩 /upload 로) ----------
+const CSRF = () => (document.querySelector("input[name=csrf_token]") || {}).value || "";
+const MAX_SEND = 4 * 1024 * 1024; // Vercel 은 요청 하나당 4.5MB 제한
+
+// 4MB 넘는 사진은 브라우저에서 먼저 줄여서 보낸다 (GIF 는 그대로)
+async function shrinkIfNeeded(file) {
+  if (file.size <= MAX_SEND || file.type === "image/gif") return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    canvas.getContext("2d").drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((ok) => canvas.toBlob(ok, "image/jpeg", 0.88));
+    return blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : file;
+  } catch { return file; }
+}
+
+async function uploadOne(file, kind) {
+  const body = new FormData();
+  body.append("file", await shrinkIfNeeded(file));
+  body.append("kind", kind);
+  body.append("csrf_token", CSRF());
+  const res = await fetch("/upload", { method: "POST", body, headers: { "X-CSRF-Token": CSRF() } });
+  if (res.status === 413) throw new Error("파일이 너무 커요 (최대 4MB)");
+  const data = await res.json().catch(() => ({ error: "업로드에 실패했어요" }));
+  if (!res.ok) throw new Error(data.error || "업로드에 실패했어요");
+  return data;
+}
+
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? start;
+  const before = textarea.value.slice(0, start);
+  const pre = before && !before.endsWith("\n") ? "\n" : "";
+  const piece = pre + text + "\n";
+  textarea.value = before + piece + textarea.value.slice(end);
+  const pos = start + piece.length;
+  textarea.setSelectionRange(pos, pos);
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function addTrayItem(tray, token, url) {
+  tray.hidden = false;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "tray-item";
+  btn.dataset.token = token;
+  btn.title = "본문에 한 번 더 넣기";
+  const img = document.createElement("img");
+  img.src = url;
+  btn.appendChild(img);
+  tray.appendChild(btn);
+}
+
+document.querySelectorAll("input[type=file][data-upload]").forEach((input) => {
+  input.addEventListener("change", async () => {
+    const kind = input.dataset.upload;
+    const status = document.getElementById("upload-status");
+    const files = [...input.files];
+    input.value = "";
+    for (let i = 0; i < files.length; i++) {
+      if (status) status.textContent = `사진 올리는 중… (${i + 1}/${files.length})`;
+      try {
+        const up = await uploadOne(files[i], kind);
+        if (input.dataset.insert) {                       // 글쓰기: 본문에 [[img:번호]] 넣기
+          const ta = document.getElementById(input.dataset.insert);
+          const token = `[[img:${up.id}]]`;
+          insertAtCursor(ta, token);
+          const tray = document.getElementById("image-tray");
+          if (tray) addTrayItem(tray, token, up.url);
+        } else if (input.dataset.collect) {               // 커뮤콘: 여러 장 모으기
+          const box = document.getElementById(input.dataset.collect);
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "collect-item";
+          btn.title = "빼기";
+          const img = document.createElement("img");
+          img.src = up.url;
+          const hidden = document.createElement("input");
+          Object.assign(hidden, { type: "hidden", name: "image_id", value: up.id });
+          btn.append(img, hidden);
+          btn.addEventListener("click", () => btn.remove());
+          box.appendChild(btn);
+        } else if (input.dataset.target) {                // 프로필 / 아이콘 / 배너: 한 장
+          const t = input.dataset.target;
+          document.getElementById(`${t}-id`).value = up.id;
+          const preview = document.getElementById(`${t}-preview`);
+          if (t === "banner") {
+            preview.style.backgroundImage = `url('${up.url}')`;
+            preview.classList.add("has");
+            preview.textContent = "";
+          } else {
+            const img = document.createElement("img");
+            Object.assign(img, { src: up.url, alt: "", width: 72, height: 72 });
+            img.className = t === "icon" ? "communi-icon" : "avatar";
+            preview.replaceChildren(img);
+          }
+          if (input.dataset.autosubmit) document.getElementById(input.dataset.autosubmit).submit();
+        }
+        if (status) status.textContent = "";
+      } catch (e) {
+        if (status) status.textContent = "";
+        alert(`${files[i].name}: ${e.message}`);
+      }
+    }
+  });
+});
+
+// 글쓰기: 아래 사진 목록을 누르면 본문 커서 위치에 다시 넣기
+document.addEventListener("click", (e) => {
+  const item = e.target.closest(".tray-item");
+  if (!item) return;
+  const ta = document.getElementById("content");
+  if (ta) insertAtCursor(ta, item.dataset.token);
+});
+
+// ---------- 투표 만들기 ----------
+(() => {
+  const builder = document.querySelector(".poll-builder");
+  if (!builder) return;
+  const on = document.getElementById("poll-on");
+  const box = document.getElementById("poll-options");
+  const sync = () => { on.value = builder.open ? "1" : ""; };
+  builder.addEventListener("toggle", sync);
+  sync();
+  const renumber = () => box.querySelectorAll("input").forEach((inp, i) => { inp.placeholder = `항목 ${i + 1}`; });
+  document.getElementById("add-option").addEventListener("click", () => {
+    if (box.children.length >= 10) return alert("항목은 10개까지 넣을 수 있어요.");
+    const row = box.firstElementChild.cloneNode(true);
+    row.querySelector("input").value = "";
+    box.appendChild(row);
+    renumber();
+    row.querySelector("input").focus();
+  });
+  box.addEventListener("click", (e) => {
+    if (!e.target.matches("[data-remove-option]")) return;
+    if (box.children.length <= 2) return alert("항목은 최소 2개가 필요해요.");
+    e.target.closest(".poll-option-row").remove();
+    renumber();
+  });
+})();
+
 // 보안 코드 새로고침
 (() => {
   const btn = document.getElementById("captcha-refresh");

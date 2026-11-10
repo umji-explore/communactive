@@ -1,46 +1,12 @@
 """커뮤콘: 유저가 직접 만들고, 포인트로 사고, 댓글에 쓰는 이모티콘"""
-import os
-import shutil
-import uuid
-
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
-
 from sqlalchemy.exc import IntegrityError
 
 from models import ConItem, ConPack, UserConPack, db
+from uploads import owned_upload
 from utils import login_required, spend_points
 
 bp = Blueprint("cons", __name__, url_prefix="/con")
-
-
-def sniff_image(head):
-    """파일 앞부분(매직 넘버)으로 실제 이미지 형식을 확인. 확장자는 믿지 않는다."""
-    if head.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "png"
-    if head[:6] in (b"GIF87a", b"GIF89a"):
-        return "gif"
-    if head.startswith(b"\xff\xd8\xff"):
-        return "jpg"
-    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
-        return "webp"
-    return None
-
-
-CONTENT_TYPES = {"png": "image/png", "gif": "image/gif", "jpg": "image/jpeg", "webp": "image/webp"}
-
-
-def store_image(data, ext, pack_id, folder):
-    """이미지를 저장하고 ConItem.path 에 넣을 값을 돌려준다.
-    Vercel Blob 이 연결돼 있으면 Blob URL, 아니면 static 기준 로컬 경로."""
-    name = f"{uuid.uuid4().hex}.{ext}"
-    if current_app.config["USE_BLOB"]:
-        from vercel.blob.sync import put_blob
-        result = put_blob(f"cons/{pack_id}/{name}", data, access="public", content_type=CONTENT_TYPES[ext])
-        return result.url
-    os.makedirs(folder, exist_ok=True)
-    with open(os.path.join(folder, name), "wb") as out:
-        out.write(data)
-    return f"uploads/cons/{pack_id}/{name}"
 
 
 @bp.route("/")
@@ -92,7 +58,9 @@ def new():
     form = {"name": "", "description": "", "price": "0"}
     if request.method == "POST":
         form = {k: request.form.get(k, "").strip() for k in form}
-        files = [f for f in request.files.getlist("images") if f and f.filename]
+        # 이미지는 /upload 로 한 장씩 먼저 올리고, 여기서는 그 번호만 받는다 (Vercel 4.5MB 제한 대응)
+        ids = list(dict.fromkeys(request.form.getlist("image_id", type=int)))
+        uploads = [u for u in (owned_upload(i, g.user, "con") for i in ids) if u]
         try:
             price = int(form["price"] or 0)
         except ValueError:
@@ -105,23 +73,10 @@ def new():
             error = "설명은 300자 이하로 입력해주세요."
         elif not 0 <= price <= cfg["CON_MAX_PRICE"]:
             error = f"가격은 0 ~ {cfg['CON_MAX_PRICE']:,}P 사이로 입력해주세요."
-        elif not files:
+        elif not uploads:
             error = "이미지를 1개 이상 올려주세요."
-        elif len(files) > cfg["CON_MAX_FILES"]:
+        elif len(uploads) > cfg["CON_MAX_FILES"]:
             error = f"이미지는 최대 {cfg['CON_MAX_FILES']}개까지 올릴 수 있습니다."
-
-        images = []
-        if not error:
-            for f in files:
-                data = f.read(cfg["CON_MAX_FILE_SIZE"] + 1)
-                if len(data) > cfg["CON_MAX_FILE_SIZE"]:
-                    error = f"'{f.filename}' 파일이 너무 큽니다. (최대 {cfg['CON_MAX_FILE_SIZE'] // 1024}KB)"
-                    break
-                ext = sniff_image(data[:16])
-                if not ext:
-                    error = f"'{f.filename}'은(는) 지원하지 않는 형식입니다. (PNG, GIF, JPG, WEBP)"
-                    break
-                images.append((data, ext))
 
         if error:
             flash(error, "error")
@@ -129,18 +84,10 @@ def new():
             pack = ConPack(creator_id=g.user.id, name=form["name"], description=form["description"], price=price)
             db.session.add(pack)
             db.session.flush()
-            folder = os.path.join(cfg["UPLOAD_DIR"], "cons", str(pack.id))
-            try:
-                for i, (data, ext) in enumerate(images):
-                    path = store_image(data, ext, pack.id, folder)
-                    db.session.add(ConItem(pack_id=pack.id, path=path, sort_order=i))
-                db.session.add(UserConPack(user_id=g.user.id, pack_id=pack.id))  # 만든 사람은 자동 보유
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                if not cfg["USE_BLOB"]:
-                    shutil.rmtree(folder, ignore_errors=True)
-                raise
+            for i, up in enumerate(uploads):
+                db.session.add(ConItem(pack_id=pack.id, path=up.path, sort_order=i))
+            db.session.add(UserConPack(user_id=g.user.id, pack_id=pack.id))  # 만든 사람은 자동 보유
+            db.session.commit()
             flash(f"커뮤콘 '{pack.name}'이(가) 등록되었습니다!", "success")
             return redirect(url_for("cons.detail", pack_id=pack.id))
     return render_template("con_new.html", form=form)

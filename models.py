@@ -16,6 +16,7 @@ class User(db.Model):
     nickname = db.Column(db.String(20), unique=True, nullable=False)
     password_hash = db.Column(db.String(255))
     recovery_hash = db.Column(db.String(255))  # 비밀번호 찾기용 복구 코드 (해시만 저장)
+    avatar = db.Column(db.String(500))  # 프로필 사진
     signup_ip = db.Column(db.String(64), default="", index=True)
     points = db.Column(db.Integer, default=0, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
@@ -38,9 +39,19 @@ class Community(db.Model):
     description = db.Column(db.String(200), default="")
     creator_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    icon = db.Column(db.String(500))        # 아이콘 이미지 (Blob URL 또는 static 경로)
+    banner = db.Column(db.String(500))      # 상단 배너 이미지
+    categories = db.Column(db.String(300), default="")  # 말머리 목록 (줄바꿈 구분)
 
     creator = db.relationship("User")
     posts = db.relationship("Post", back_populates="community", lazy="dynamic", cascade="all, delete-orphan")
+
+    @property
+    def category_list(self):
+        return [c for c in (self.categories or "").split("\n") if c]
+
+    def is_manager(self, user):
+        return user is not None and (user.id == self.creator_id or user.is_admin)
 
 
 class Post(db.Model):
@@ -56,6 +67,12 @@ class Post(db.Model):
     points_awarded = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
     updated_at = db.Column(db.DateTime)
+    category = db.Column(db.String(20))  # 말머리
+    is_notice = db.Column(db.Boolean, default=False, nullable=False)  # 공지 (커뮤니티 관리자가 지정)
+    has_image = db.Column(db.Boolean, default=False, nullable=False)
+    has_poll = db.Column(db.Boolean, default=False, nullable=False)
+
+    poll = db.relationship("Poll", uselist=False, back_populates="post", cascade="all, delete-orphan")
 
     # 목록에서 글쓴이/커뮤니티 이름을 함께 가져와 쿼리 수를 줄인다
     author = db.relationship("User", lazy="joined")
@@ -128,6 +145,63 @@ class UserConPack(db.Model):
     pack = db.relationship("ConPack", lazy="joined")
 
     __table_args__ = (db.UniqueConstraint("user_id", "pack_id", name="uq_user_pack"),)
+
+
+class Upload(db.Model):
+    """올린 이미지 (글 사진 / 커뮤콘 / 프로필 / 커뮤니티 아이콘·배너)"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    kind = db.Column(db.String(20), nullable=False)
+    path = db.Column(db.String(500), nullable=False)
+    width = db.Column(db.Integer)
+    height = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
+
+
+class Poll(db.Model):
+    """글에 붙는 투표"""
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False, unique=True)
+    question = db.Column(db.String(100), nullable=False)
+    multiple = db.Column(db.Boolean, default=False, nullable=False)  # 여러 개 선택 가능
+    ends_at = db.Column(db.DateTime)  # None 이면 마감 없음
+    voter_count = db.Column(db.Integer, default=0, nullable=False)
+
+    post = db.relationship("Post", back_populates="poll")
+    options = db.relationship("PollOption", backref="poll", cascade="all, delete-orphan",
+                              order_by="PollOption.sort_order", lazy="selectin")
+    votes = db.relationship("PollVote", cascade="all, delete-orphan")
+
+    @property
+    def closed(self):
+        return self.ends_at is not None and self.ends_at <= utcnow()
+
+    @property
+    def total_votes(self):
+        return sum(o.votes for o in self.options)
+
+
+class PollOption(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey("poll.id"), nullable=False, index=True)
+    text = db.Column(db.String(50), nullable=False)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    votes = db.Column(db.Integer, default=0, nullable=False)
+
+
+class PollVote(db.Model):
+    """한 사람당 투표 하나에 한 번만 (여러 개 선택이면 option_ids 에 여러 개)"""
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey("poll.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    option_ids = db.Column(db.String(100), nullable=False)  # "3,5"
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    __table_args__ = (db.UniqueConstraint("poll_id", "user_id", name="uq_poll_vote"),)
+
+    @property
+    def option_set(self):
+        return {int(x) for x in self.option_ids.split(",") if x}
 
 
 class PointLog(db.Model):

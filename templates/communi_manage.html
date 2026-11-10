@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import communi_icon %}
+{% block title %}커뮤니티 관리 - {{ community.name }} - {% endblock %}
+{% block content %}
+<section class="card narrow wide">
+  <h1 class="card-title">{{ community.name }} 커뮤니티 관리</h1>
+  <form method="post" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="field">
+      <span class="field-label">아이콘</span>
+      <div class="img-setting">
+        <div class="img-preview icon-preview" id="icon-preview">{{ communi_icon(community, 72) }}</div>
+        <div class="img-actions">
+          <label class="btn btn-light btn-sm file-btn">사진 선택
+            <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-upload="icon" data-target="icon" hidden>
+          </label>
+          <input type="hidden" name="icon_id" id="icon-id">
+          {% if community.icon %}<label class="check small"><input type="checkbox" name="remove_icon" value="1"> 아이콘 지우기</label>{% endif %}
+          <small class="muted">정사각형으로 잘려요 (160×160)</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label">배너 사진</span>
+      <div class="banner-preview {{ 'has' if community.banner }}" id="banner-preview"
+           {% if community.banner %}style="background-image:url('{{ community.banner|con_url }}')"{% endif %}>
+        {% if not community.banner %}<span class="muted small">배너 없음</span>{% endif %}
+      </div>
+      <div class="img-actions row-actions">
+        <label class="btn btn-light btn-sm file-btn">사진 선택
+          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-upload="banner" data-target="banner" hidden>
+        </label>
+        <input type="hidden" name="banner_id" id="banner-id">
+        {% if community.banner %}<label class="check small"><input type="checkbox" name="remove_banner" value="1"> 배너 지우기</label>{% endif %}
+        <small class="muted">커뮤니티 맨 위에 보여요. 가로로 긴 사진을 추천해요.</small>
+      </div>
+    </div>
+
+    <label>소개
+      <textarea name="description" maxlength="200" rows="3">{{ community.description }}</textarea>
+    </label>
+
+    <label>말머리
+      <textarea name="categories" rows="4" placeholder="한 줄에 하나씩 (예: 잡담, 질문, 정보)">{{ community.categories or '' }}</textarea>
+      <small>최대 10개, 각 10자 이하. 글쓸 때 고를 수 있고 목록에서 말머리별로 볼 수 있어요.</small>
+    </label>
+
+    <div class="form-actions">
+      <span class="hint">글을 공지로 고정하려면 글 화면에서 <strong>공지 등록</strong>을 누르세요.</span>
+      <a class="btn btn-light" href="{{ url_for('board.communi', slug=community.slug) }}">취소</a>
+      <button class="btn">저장</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

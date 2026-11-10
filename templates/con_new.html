@@ -4,7 +4,7 @@
 <section class="card narrow">
   <h1 class="card-title">커뮤콘 만들기</h1>
   <p class="muted">직접 그린 이모티콘을 올리고 가격을 정하세요. 만든 콘은 자동으로 내 것이 됩니다.</p>
-  <form method="post" enctype="multipart/form-data" class="form">
+  <form method="post" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>이름
       <input name="name" value="{{ form.name }}" maxlength="40" required placeholder="예: 말랑 고양이콘">
@@ -16,11 +16,16 @@
       <input type="number" name="price" value="{{ form.price }}" min="0" max="{{ config.CON_MAX_PRICE }}" step="10" required>
       <small>0이면 무료</small>
     </label>
-    <label>이미지
-      <input type="file" name="images" id="con-files" multiple required accept="image/png,image/gif,image/jpeg,image/webp">
-      <small>PNG / GIF / JPG / WEBP, 장당 최대 {{ config.CON_MAX_FILE_SIZE // 1024 }}KB, 최대 {{ config.CON_MAX_FILES }}개. 첫 번째 이미지가 대표 이미지가 됩니다.</small>
-    </label>
-    <div class="con-items-preview" id="con-file-preview"></div>
+    <div class="field">
+      <span class="field-label">이미지</span>
+      <label class="btn btn-light btn-sm file-btn">이미지 선택
+        <input type="file" multiple accept="image/png,image/gif,image/jpeg,image/webp" data-upload="con" data-collect="con-ids" hidden>
+      </label>
+      <small class="muted">PNG / GIF / JPG / WEBP, 최대 {{ config.CON_MAX_FILES }}개. 240px 크기로 맞춰지고, 움직이는 GIF는 1MB까지 그대로 올라가요.
+        첫 번째 이미지가 대표 이미지예요. 사진을 누르면 빠져요.</small>
+      <span class="upload-status" id="upload-status" aria-live="polite"></span>
+      <div class="con-items-preview" id="con-ids"></div>
+    </div>
     <button class="btn">등록하기</button>
   </form>
 </section>

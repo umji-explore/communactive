@@ -1,7 +1,10 @@
 """홈 (전체 베스트) / 마이페이지 / 약관"""
 from datetime import timedelta
 
-from flask import Blueprint, Response, current_app, g, render_template, request, send_from_directory
+from flask import (Blueprint, Response, current_app, flash, g, redirect, render_template, request,
+                   send_from_directory, url_for)
+
+from uploads import owned_upload
 
 from models import Comment, Community, ConPack, PointLog, Post, UserConPack, db, utcnow
 from utils import login_required, period_best, realtime_best
@@ -57,6 +60,23 @@ def favicon():
 def robots():
     body = "User-agent: *\nDisallow: /me\nDisallow: /login\nDisallow: /signup\nDisallow: /forgot\n"
     return Response(body, mimetype="text/plain")
+
+
+@bp.route("/me/avatar", methods=["POST"])
+@login_required
+def set_avatar():
+    if request.form.get("remove"):
+        g.user.avatar = None
+        flash("프로필 사진을 지웠어요.", "info")
+    else:
+        up = owned_upload(request.form.get("avatar_id", type=int), g.user, "avatar")
+        if not up:
+            flash("사진을 먼저 올려주세요.", "error")
+            return redirect(url_for("main.mypage"))
+        g.user.avatar = up.path
+        flash("프로필 사진을 바꿨어요.", "success")
+    db.session.commit()
+    return redirect(url_for("main.mypage"))
 
 
 @bp.route("/me")

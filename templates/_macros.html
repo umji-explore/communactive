@@ -16,7 +16,39 @@
 {% endif %}
 {% endmacro %}
 
-{% macro post_table(posts, community=None, show_communi=False) %}
+{% macro avatar(user, size=32) %}
+{% if user.avatar %}<img class="avatar" src="{{ user.avatar|con_url }}" width="{{ size }}" height="{{ size }}" alt="">
+{% else %}<span class="avatar avatar-empty" style="width:{{ size }}px;height:{{ size }}px;font-size:{{ (size * 0.45)|int }}px" aria-hidden="true">{{ user.nickname[:1] }}</span>{% endif %}
+{% endmacro %}
+
+{% macro communi_icon(c, size=24) %}
+{% if c.icon %}<img class="communi-icon" src="{{ c.icon|con_url }}" width="{{ size }}" height="{{ size }}" alt="">
+{% else %}<span class="communi-icon communi-icon-empty" style="width:{{ size }}px;height:{{ size }}px;font-size:{{ (size * 0.5)|int }}px" aria-hidden="true">{{ c.name[:1] }}</span>{% endif %}
+{% endmacro %}
+
+{% macro post_row(p, show_communi, notice=False) %}
+<tr class="{{ 'notice-row' if notice }}">
+  <td class="col-no">{% if notice %}<span class="notice-label">공지</span>{% else %}{{ p.id }}{% endif %}</td>
+  <td class="col-title">
+    <a href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
+      {% if show_communi %}<span class="tag">{{ p.community.name }}</span>{% endif %}
+      {% if p.category %}<span class="cat">[{{ p.category }}]</span>{% endif %}
+      {% if p.upvotes >= config.POPULAR_MIN_UPVOTES and not notice %}<span class="hot">인기</span>{% endif %}
+      {{ p.title }}
+    </a>
+    {% if p.has_image %}<span class="ico ico-img" title="사진"></span>{% endif %}
+    {% if p.has_poll %}<span class="ico ico-poll" title="투표"></span>{% endif %}
+    {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
+    <div class="mobile-meta">{{ p.author.nickname }} · {{ p.created_at|short_time }} · 조회 {{ p.views }} · 추천 {{ p.upvotes }}</div>
+  </td>
+  <td class="col-author">{{ p.author.nickname }}</td>
+  <td class="col-date">{{ p.created_at|short_time }}</td>
+  <td class="col-num">{{ p.views }}</td>
+  <td class="col-num">{{ p.upvotes }}</td>
+</tr>
+{% endmacro %}
+
+{% macro post_table(posts, community=None, show_communi=False, notices=()) %}
 <table class="post-table">
   <thead>
     <tr>
@@ -29,25 +61,11 @@
     </tr>
   </thead>
   <tbody>
+    {% for p in notices %}{{ post_row(p, show_communi, True) }}{% endfor %}
     {% for p in posts %}
-    <tr>
-      <td class="col-no">{{ p.id }}</td>
-      <td class="col-title">
-        <a href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
-          {% if show_communi %}<span class="tag">{{ p.community.name }}</span>{% endif %}
-          {% if p.upvotes >= config.POPULAR_MIN_UPVOTES %}<span class="hot">인기</span>{% endif %}
-          {{ p.title }}
-        </a>
-        {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
-        <div class="mobile-meta">{{ p.author.nickname }} · {{ p.created_at|short_time }} · 조회 {{ p.views }} · 추천 {{ p.upvotes }}</div>
-      </td>
-      <td class="col-author">{{ p.author.nickname }}</td>
-      <td class="col-date">{{ p.created_at|short_time }}</td>
-      <td class="col-num">{{ p.views }}</td>
-      <td class="col-num">{{ p.upvotes }}</td>
-    </tr>
+      {{ post_row(p, show_communi) }}
     {% else %}
-    <tr><td colspan="6" class="empty">글이 없습니다.</td></tr>
+      {% if not notices %}<tr><td colspan="6" class="empty">글이 없습니다.</td></tr>{% endif %}
     {% endfor %}
   </tbody>
 </table>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import rank_list, post_table, con_thumb %}
+{% from "_macros.html" import rank_list, post_table, con_thumb, avatar, communi_icon %}
 {% block content %}
 <div class="home-grid">
   <div class="home-main">
@@ -36,7 +36,8 @@
     <section class="box login-box">
       {% if g.user %}
         <div class="lb-user">
-          <strong>{{ g.user.nickname }}</strong>님
+          {{ avatar(g.user, 44) }}
+          <div><strong>{{ g.user.nickname }}</strong>님</div>
           <span class="lb-points">{{ g.user.points|comma }}P</span>
         </div>
         <div class="lb-links">
@@ -73,7 +74,7 @@
         {% for c, recent, total in hot %}
         <li>
           <span class="hot-rank">{{ loop.index }}</span>
-          <a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }}</a>
+          <a href="{{ url_for('board.communi', slug=c.slug) }}">{{ communi_icon(c, 20) }}<span>{{ c.name }}</span></a>
           <span class="hot-count" title="최근 24시간 글 / 전체 글">{{ recent }}<small>/{{ total }}</small></span>
         </li>
         {% endfor %}

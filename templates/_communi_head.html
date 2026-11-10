@@ -1,0 +1,17 @@
+{% from "_macros.html" import communi_icon %}
+<div class="communi-head {{ 'has-banner' if community.banner }} {{ 'slim' if slim }}"
+     {% if community.banner %}style="--banner: url('{{ community.banner|con_url }}')"{% endif %}>
+  <div class="ch-main">
+    {{ communi_icon(community, 34 if slim else 56) }}
+    <div class="ch-text">
+      <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니티</a></h1>
+      {% if not slim and community.description %}<p>{{ community.description }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="ch-actions">
+    {% if community.is_manager(g.user) %}
+      <a class="btn btn-light btn-sm" href="{{ url_for('board.manage', slug=community.slug) }}">관리</a>
+    {% endif %}
+    <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
+  </div>
+</div>

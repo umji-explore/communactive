@@ -168,16 +168,58 @@ def full_time(dt):
 URL_RE = re.compile(r"https?://[^\s<>\"']+")
 
 
+def _link(m):
+    url = m.group(0).rstrip(".,)!?")
+    rest = m.group(0)[len(url):]
+    return f'<a href="{url}" target="_blank" rel="noopener nofollow ugc">{url}</a>{rest}'
+
+
+def linkify(text):
+    """escape 한 뒤 http(s) 주소만 링크로 바꾼다. HTML 주입 불가."""
+    return URL_RE.sub(_link, str(escape(text or "")))
+
+
 def nl2br(text):
-    """줄바꿈을 <br>로, http(s) 주소는 링크로. 먼저 escape 하므로 HTML 주입은 불가능."""
-    escaped = str(escape(text or ""))
+    """줄바꿈을 <br>로, http(s) 주소는 링크로."""
+    return Markup(linkify(text).replace("\n", "<br>"))
 
-    def link(m):
-        url = m.group(0).rstrip(".,)!?")
-        rest = m.group(0)[len(url):]
-        return f'<a href="{url}" target="_blank" rel="noopener nofollow ugc">{url}</a>{rest}'
 
-    return Markup(URL_RE.sub(link, escaped).replace("\n", "<br>"))
+IMG_TOKEN_RE = re.compile(r"^\[\[img:(\d+)\]\]$")
+YOUTUBE_RE = re.compile(
+    r"^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?(?:[^\s#]*&)?v=|shorts/|embed/)|youtu\.be/)"
+    r"([A-Za-z0-9_-]{11})(?:[?&#]\S*)?$"
+)
+
+
+def image_token_ids(content):
+    return [int(m.group(1)) for line in (content or "").split("\n") if (m := IMG_TOKEN_RE.match(line.strip()))]
+
+
+def render_body(content, images):
+    """글 본문 → HTML.
+    - [[img:번호]] 만 있는 줄: 사진 (images 에 있는 = 글쓴이가 올린 사진만)
+    - 유튜브 주소만 있는 줄: 동영상
+    - 나머지: 글자 (escape + 링크)"""
+    html = []
+    for raw in (content or "").split("\n"):
+        line = raw.strip()
+        m = IMG_TOKEN_RE.match(line)
+        if m:
+            up = images.get(int(m.group(1)))
+            if up:
+                size = f' width="{up.width}" height="{up.height}"' if up.width else ""
+                html.append(f'<a class="post-img" href="{escape(con_url(up.path))}" target="_blank" rel="noopener">'
+                            f'<img src="{escape(con_url(up.path))}"{size} loading="lazy" alt=""></a>')
+            continue
+        y = YOUTUBE_RE.match(line)
+        if y:
+            html.append(f'<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/{y.group(1)}" '
+                        'title="YouTube" loading="lazy" allowfullscreen '
+                        'allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"></iframe></div>')
+            continue
+        html.append(linkify(raw) + "<br>")
+    out = "".join(html)
+    return Markup(out[:-4] if out.endswith("<br>") else out)
 
 
 def con_url(path):
@@ -189,6 +231,7 @@ def con_url(path):
 
 def register_template_helpers(app):
     app.jinja_env.filters["con_url"] = con_url
+    app.jinja_env.filters["linkify"] = lambda t: Markup(linkify(t))
     app.jinja_env.filters["short_time"] = short_time
     app.jinja_env.filters["full_time"] = full_time
     app.jinja_env.filters["nl2br"] = nl2br

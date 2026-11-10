@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import communi_icon %}
 {% block title %}커뮤니티 목록 - {% endblock %}
 {% block content %}
 <section class="card">
@@ -14,7 +15,7 @@
     {% for c, cnt in rows %}
     <li>
       <a href="{{ url_for('board.communi', slug=c.slug) }}">
-        <strong>{{ c.name }}</strong>
+        <strong class="cl-name">{{ communi_icon(c, 28) }}<span>{{ c.name }}</span></strong>
         <span class="desc">{{ c.description or "소개가 없습니다." }}</span>
         <span class="count">글 {{ cnt|comma }}</span>
       </a>

@@ -9,6 +9,8 @@ import board
 import captcha
 import cons
 import main
+import schema
+import uploads
 from config import ON_VERCEL, Config
 from models import User, db
 from utils import check_csrf, register_template_helpers
@@ -26,7 +28,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     register_template_helpers(app)
 
-    for module in (main, auth, board, cons, captcha):
+    for module in (main, auth, board, cons, captcha, uploads):
         app.register_blueprint(module.bp)
 
     @app.before_request
@@ -78,7 +80,7 @@ def create_app(config_class=Config):
         click.echo(f"{nickname} 님을 관리자로 지정했습니다.")
 
     with app.app_context():
-        db.create_all()
+        schema.upgrade(db)  # 새 테이블 생성 + 기존 테이블에 빠진 컬럼 추가 (데이터 보존)
     return app
 
 

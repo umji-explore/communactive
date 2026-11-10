@@ -44,13 +44,14 @@ class Config:
     SESSION_COOKIE_SECURE = ON_VERCEL
     PREFERRED_URL_SCHEME = "https" if ON_VERCEL else "http"
 
-    # 업로드 (커뮤콘 이미지): Vercel Blob 이 연결돼 있으면 Blob, 아니면 로컬 static/uploads
+    # 업로드 (이미지): Vercel Blob 이 연결돼 있으면 Blob, 아니면 로컬 static/uploads
+    # 사진은 한 장씩 따로 올린다 (Vercel 은 요청 하나당 4.5MB 제한)
     USE_BLOB = bool(os.environ.get("BLOB_READ_WRITE_TOKEN") or os.environ.get("BLOB_STORE_ID"))
     UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
-    MAX_CONTENT_LENGTH = 40 * 1024 * 1024  # 요청 전체 최대 40MB
+    MAX_CONTENT_LENGTH = int(4.5 * 1024 * 1024)
     CON_MAX_FILES = 30                      # 콘 하나당 최대 이미지 수
-    CON_MAX_FILE_SIZE = 1 * 1024 * 1024     # 이미지 1장당 최대 1MB
     CON_MAX_PRICE = 100000
+    POST_MAX_IMAGES = 30                    # 글 하나당 최대 사진 수
 
 
     # 포인트

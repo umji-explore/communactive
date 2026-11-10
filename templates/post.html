@@ -2,17 +2,21 @@
 {% block title %}{{ post.title }} - {{ community.name }} - {% endblock %}
 {% block description %}{{ post.content|truncate(120, True, '…') }}{% endblock %}
 {% block content %}
-<div class="communi-head slim">
-  <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니티</a></h1>
-  <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
-</div>
+{% from "_macros.html" import avatar %}
+{% set slim = True %}
+{% include "_communi_head.html" %}
 
 {% include "_popular.html" %}
 
 <article class="card post-view">
   <header class="post-head">
-    <h2>{{ post.title }}</h2>
+    <h2>
+      {% if post.is_notice %}<span class="notice-label">공지</span>{% endif %}
+      {% if post.category %}<span class="cat">[{{ post.category }}]</span>{% endif %}
+      {{ post.title }}
+    </h2>
     <div class="post-meta">
+      {{ avatar(post.author, 26) }}
       <span class="author">{{ post.author.nickname }}</span>
       <span>{{ post.created_at|full_time }}{% if post.updated_at %} <em class="edited" title="{{ post.updated_at|full_time }} 수정">(수정됨)</em>{% endif %}</span>
       <span class="sep">조회 {{ post.views|comma }}</span>
@@ -20,7 +24,48 @@
       <span>댓글 {{ post.comment_count }}</span>
     </div>
   </header>
-  <div class="post-body">{{ post.content|nl2br }}</div>
+  <div class="post-body">{{ body }}</div>
+
+  {% if post.poll %}
+  {% set poll = post.poll %}
+  {% set show_result = my_poll is not none or poll.closed or not g.user or (g.user and g.user.id == post.user_id) %}
+  <section class="poll" id="poll">
+    <div class="poll-head">
+      <span class="ico ico-poll"></span>
+      <strong>{{ poll.question }}</strong>
+      <span class="muted small">
+        {{ '복수 선택' if poll.multiple else '단일 선택' }} ·
+        {% if poll.closed %}마감됨{% elif poll.ends_at %}{{ poll.ends_at|full_time }} 마감{% else %}마감 없음{% endif %}
+        · {{ poll.voter_count }}명 참여
+      </span>
+    </div>
+    {% if show_result %}
+      {% set total = poll.total_votes %}
+      <ul class="poll-results">
+        {% for o in poll.options %}
+        {% set pct = ((o.votes * 100 / total)|round|int) if total else 0 %}
+        <li class="{{ 'mine' if my_poll and o.id in my_poll }}">
+          <div class="bar" style="width: {{ pct }}%"></div>
+          <span class="opt">{{ o.text }}{% if my_poll and o.id in my_poll %} <em>✓ 내 선택</em>{% endif %}</span>
+          <span class="cnt">{{ o.votes }}표 · {{ pct }}%</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if not g.user and not poll.closed %}<p class="muted small"><a class="u" href="{{ url_for('auth.login', next=request.path) }}">로그인</a>하고 투표에 참여하세요.</p>{% endif %}
+    {% else %}
+      <form method="post" action="{{ url_for('board.poll_vote', slug=community.slug, post_id=post.id) }}" class="poll-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for o in poll.options %}
+        <label class="poll-choice">
+          <input type="{{ 'checkbox' if poll.multiple else 'radio' }}" name="option" value="{{ o.id }}">
+          <span>{{ o.text }}</span>
+        </label>
+        {% endfor %}
+        <button class="btn btn-sm">투표하기</button>
+      </form>
+    {% endif %}
+  </section>
+  {% endif %}
 
   <div class="vote" id="vote">
     {% for kind, label, count, sym in [('up', '추천', post.upvotes, '▲'), ('down', '비추천', post.downvotes, '▼')] %}
@@ -35,14 +80,22 @@
     {% endfor %}
   </div>
 
-  {% if can_manage %}
+  {% if can_edit or can_delete or is_manager %}
   <div class="post-actions">
-    <a class="btn btn-light btn-sm" href="{{ url_for('board.edit', slug=community.slug, post_id=post.id) }}">수정</a>
+    {% if is_manager %}
+    <form method="post" action="{{ url_for('board.toggle_notice', slug=community.slug, post_id=post.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-light btn-sm">{{ '공지 해제' if post.is_notice else '공지 등록' }}</button>
+    </form>
+    {% endif %}
+    {% if can_edit %}<a class="btn btn-light btn-sm" href="{{ url_for('board.edit', slug=community.slug, post_id=post.id) }}">수정</a>{% endif %}
+    {% if can_delete %}
     <form method="post" action="{{ url_for('board.delete_post', slug=community.slug, post_id=post.id) }}"
-          data-confirm="글을 삭제할까요?{% if post.points_awarded %} 받은 {{ post.points_awarded }}P가 회수됩니다.{% endif %}">
+          data-confirm="글을 삭제할까요?{% if post.points_awarded %} 글쓴이가 받은 {{ post.points_awarded }}P가 회수됩니다.{% endif %}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-light btn-sm">삭제</button>
     </form>
+    {% endif %}
   </div>
   {% endif %}
 </article>
@@ -53,10 +106,11 @@
     {% for c in post.comments %}
     <li id="c{{ c.id }}" class="{{ 'by-op' if c.user_id == post.user_id }}">
       <div class="c-head">
+        {{ avatar(c.author, 22) }}
         <span class="author">{{ c.author.nickname }}</span>
         {% if c.user_id == post.user_id %}<span class="op">글쓴이</span>{% endif %}
         <span class="time">{{ c.created_at|full_time }}</span>
-        {% if g.user and (g.user.id == c.user_id or g.user.is_admin) %}
+        {% if g.user and (g.user.id == c.user_id or g.user.is_admin or is_manager) %}
         <form method="post" action="{{ url_for('board.delete_comment', comment_id=c.id) }}" class="inline"
               data-confirm="댓글을 삭제할까요?{% if c.points_awarded %} 받은 {{ c.points_awarded }}P가 회수됩니다.{% endif %}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
