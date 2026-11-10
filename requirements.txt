@@ -5,3 +5,5 @@ python-dotenv==1.2.4
 psycopg[binary]==3.2.13
 vercel==0.12.2
 Pillow==13.0.0
+nh3==0.3.7
+requests==2.34.2

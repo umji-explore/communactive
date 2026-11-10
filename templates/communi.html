@@ -11,26 +11,26 @@
 <section class="card">
   <div class="card-head">
     <div class="tabs">
-      <a href="{{ url_for('board.communi', slug=community.slug) }}" class="{{ 'on' if mode == 'all' and not cat }}">전체글</a>
-      <a href="{{ url_for('board.communi', slug=community.slug, mode='best') }}" class="{{ 'on' if mode == 'best' }}">인기글</a>
+      <a href="{{ url_for('board.communi', slug=community.slug, board=board.id if board else None) }}" class="{{ 'on' if mode == 'all' }}">전체글</a>
+      <a href="{{ url_for('board.communi', slug=community.slug, mode='best', board=board.id if board else None) }}" class="{{ 'on' if mode == 'best' }}">인기글</a>
       <a href="{{ url_for('board.communi', slug=community.slug, mode='notice') }}" class="{{ 'on' if mode == 'notice' }}">공지</a>
     </div>
     <form class="search inline-search" method="get">
       {% if mode != 'all' %}<input type="hidden" name="mode" value="{{ mode }}">{% endif %}
-      {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+      {% if board %}<input type="hidden" name="board" value="{{ board.id }}">{% endif %}
       <input type="search" name="q" value="{{ q }}" placeholder="글 검색">
     </form>
   </div>
-  {% if community.category_list %}
-  <div class="cat-tabs">
-    <a href="{{ url_for('board.communi', slug=community.slug, mode=mode if mode != 'all' else None) }}" class="{{ 'on' if not cat }}">전체</a>
-    {% for c in community.category_list %}
-    <a href="{{ url_for('board.communi', slug=community.slug, cat=c, mode=mode if mode != 'all' else None) }}" class="{{ 'on' if cat == c }}">{{ c }}</a>
+  {% if community.boards %}
+  <nav class="board-tabs" aria-label="게시판">
+    <a href="{{ url_for('board.communi', slug=community.slug, mode=mode if mode != 'all' else None) }}" class="{{ 'on' if not board }}">전체</a>
+    {% for b in community.boards %}
+    <a href="{{ url_for('board.communi', slug=community.slug, board=b.id, mode=mode if mode != 'all' else None) }}" class="{{ 'on' if board and board.id == b.id }}">{{ b.name }}</a>
     {% endfor %}
-  </div>
+  </nav>
   {% endif %}
   {{ post_table(pagination.items, community, notices=notices) }}
-  {{ pager(pagination, 'board.communi', slug=community.slug, mode=mode if mode != 'all' else None, q=q or None, cat=cat) }}
-  <div class="right"><a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a></div>
+  {{ pager(pagination, 'board.communi', slug=community.slug, mode=mode if mode != 'all' else None, q=q or None, board=board.id if board else None) }}
+  <div class="right"><a class="btn" href="{{ url_for('board.write', slug=community.slug, board=board.id if board else None) }}">글쓰기</a></div>
 </section>
 {% endblock %}

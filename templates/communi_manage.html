@@ -42,10 +42,42 @@
       <textarea name="description" maxlength="200" rows="3">{{ community.description }}</textarea>
     </label>
 
-    <label>말머리
-      <textarea name="categories" rows="4" placeholder="한 줄에 하나씩 (예: 잡담, 질문, 정보)">{{ community.categories or '' }}</textarea>
-      <small>최대 10개, 각 10자 이하. 글쓸 때 고를 수 있고 목록에서 말머리별로 볼 수 있어요.</small>
-    </label>
+    <div class="field">
+      <span class="field-label">게시판</span>
+      <small class="muted">글 종류를 나누는 게시판을 만드세요 (예: 자유, 질문, 정보, 공지). 최대 20개.
+        게시판이 있으면 글쓸 때 하나를 골라야 해요. 게시판을 지우면 그 안의 글은 '게시판 없음'으로 남아요.</small>
+      <div class="board-rows" id="board-rows">
+        {% for b in community.boards %}
+        <div class="board-row">
+          <span class="drag" aria-hidden="true">≡</span>
+          <input type="hidden" name="board_id" value="{{ b.id }}">
+          <input name="board_name" value="{{ b.name }}" maxlength="20" required aria-label="게시판 이름">
+          <select name="board_perm" aria-label="글쓰기 권한">
+            <option value="all" {{ 'selected' if not b.manager_only }}>모두 글쓰기</option>
+            <option value="manager" {{ 'selected' if b.manager_only }}>관리자만</option>
+          </select>
+          <button type="button" class="btn btn-light btn-sm" data-move="-1" title="위로">↑</button>
+          <button type="button" class="btn btn-light btn-sm" data-move="1" title="아래로">↓</button>
+          <button type="button" class="link-btn" data-remove-board>삭제</button>
+        </div>
+        {% endfor %}
+      </div>
+      <template id="board-row-tpl">
+        <div class="board-row">
+          <span class="drag" aria-hidden="true">≡</span>
+          <input type="hidden" name="board_id" value="">
+          <input name="board_name" maxlength="20" required placeholder="새 게시판 이름" aria-label="게시판 이름">
+          <select name="board_perm" aria-label="글쓰기 권한">
+            <option value="all">모두 글쓰기</option>
+            <option value="manager">관리자만</option>
+          </select>
+          <button type="button" class="btn btn-light btn-sm" data-move="-1" title="위로">↑</button>
+          <button type="button" class="btn btn-light btn-sm" data-move="1" title="아래로">↓</button>
+          <button type="button" class="link-btn" data-remove-board>삭제</button>
+        </div>
+      </template>
+      <div><button type="button" class="btn btn-light btn-sm" id="add-board">+ 게시판 추가</button></div>
+    </div>
 
     <div class="form-actions">
       <span class="hint">글을 공지로 고정하려면 글 화면에서 <strong>공지 등록</strong>을 누르세요.</span>
@@ -54,4 +86,27 @@
     </div>
   </form>
 </section>
+<script>
+(() => {
+  const rows = document.getElementById("board-rows");
+  document.getElementById("add-board").addEventListener("click", () => {
+    if (rows.children.length >= 20) return alert("게시판은 20개까지 만들 수 있어요.");
+    rows.appendChild(document.getElementById("board-row-tpl").content.cloneNode(true));
+    rows.lastElementChild.querySelector("input[name=board_name]").focus();
+  });
+  rows.addEventListener("click", (e) => {
+    const row = e.target.closest(".board-row");
+    if (!row) return;
+    if (e.target.matches("[data-remove-board]")) {
+      const name = row.querySelector("input[name=board_name]").value;
+      if (row.querySelector("input[name=board_id]").value && !confirm(`'${name}' 게시판을 지울까요? (저장해야 반영돼요)`)) return;
+      row.remove();
+    } else if (e.target.dataset.move === "-1" && row.previousElementSibling) {
+      row.previousElementSibling.before(row);
+    } else if (e.target.dataset.move === "1" && row.nextElementSibling) {
+      row.nextElementSibling.after(row);
+    }
+  });
+})();
+</script>
 {% endblock %}

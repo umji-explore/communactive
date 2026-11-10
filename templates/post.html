@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ post.title }} - {{ community.name }} - {% endblock %}
-{% block description %}{{ post.content|truncate(120, True, '…') }}{% endblock %}
+{% block description %}{{ (post.text or post.title)|truncate(120, True, '…') }}{% endblock %}
 {% block content %}
 {% from "_macros.html" import avatar %}
 {% set slim = True %}
@@ -12,7 +12,8 @@
   <header class="post-head">
     <h2>
       {% if post.is_notice %}<span class="notice-label">공지</span>{% endif %}
-      {% if post.category %}<span class="cat">[{{ post.category }}]</span>{% endif %}
+      {% if post.board %}<a class="cat" href="{{ url_for('board.communi', slug=community.slug, board=post.board_id) }}">[{{ post.board.name }}]</a>
+      {% elif post.category %}<span class="cat">[{{ post.category }}]</span>{% endif %}
       {{ post.title }}
     </h2>
     <div class="post-meta">
@@ -25,6 +26,29 @@
     </div>
   </header>
   <div class="post-body">{{ body }}</div>
+
+  {% if post.series and series_posts %}
+  <section class="series-box">
+    <div class="series-head">
+      <span class="ico ico-series"></span>
+      <a href="{{ url_for('board.series_view', series_id=post.series_id) }}"><strong>{{ post.series.title }}</strong></a>
+      <span class="muted small">시리즈 · {{ series_posts|length }}편</span>
+    </div>
+    {% set idx = series_posts.index(post) if post in series_posts else -1 %}
+    <ol class="series-list-view">
+      {% for sp in series_posts %}
+      <li class="{{ 'current' if sp.id == post.id }}">
+        <a href="{{ url_for('board.post', slug=sp.community.slug, post_id=sp.id) }}">{{ sp.title }}</a>
+        <span class="muted small">{{ sp.created_at|short_time }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="series-nav">
+      {% if idx > 0 %}{% set pv = series_posts[idx - 1] %}<a class="btn btn-light btn-sm" href="{{ url_for('board.post', slug=pv.community.slug, post_id=pv.id) }}">‹ 이전 편</a>{% endif %}
+      {% if 0 <= idx < series_posts|length - 1 %}{% set nx = series_posts[idx + 1] %}<a class="btn btn-light btn-sm" href="{{ url_for('board.post', slug=nx.community.slug, post_id=nx.id) }}">다음 편 ›</a>{% endif %}
+    </div>
+  </section>
+  {% endif %}
 
   {% if post.poll %}
   {% set poll = post.poll %}

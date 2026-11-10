@@ -1,44 +1,136 @@
 {% extends "base.html" %}
 {% block title %}{{ '글 수정' if post else '글쓰기' }} - {{ community.name }} - {% endblock %}
 {% block content %}
-<section class="card">
+<section class="card write-card">
   <h1 class="card-title">{{ community.name }} 커뮤니티 · {{ '글 수정' if post else '글쓰기' }}</h1>
-  <form method="post" class="form" data-unsaved>
+  <form method="post" class="form" id="write-form" data-unsaved>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="content" id="content-input">
+    <input type="hidden" name="series_id" id="series-id" value="{{ form.series_id or '' }}">
 
     <div class="title-row">
-      {% if community.category_list %}
-      <select name="category" aria-label="말머리">
-        <option value="">말머리 없음</option>
-        {% for c in community.category_list %}<option value="{{ c }}" {{ 'selected' if form.category == c }}>{{ c }}</option>{% endfor %}
+      {% if boards %}
+      <select name="board_id" required aria-label="게시판">
+        <option value="">게시판 선택</option>
+        {% for b in boards %}<option value="{{ b.id }}" {{ 'selected' if form.board_id == b.id }}>{{ b.name }}{{ ' (관리자)' if b.manager_only }}</option>{% endfor %}
       </select>
       {% endif %}
-      <input name="title" value="{{ form.title }}" maxlength="100" required placeholder="제목을 입력하세요" aria-label="제목">
+      <input name="title" value="{{ form.title }}" maxlength="100" required placeholder="제목을 입력해 주세요." aria-label="제목">
     </div>
 
-    <div class="editor">
-      <div class="editor-toolbar">
-        <label class="tool-btn">
-          <span class="ico ico-img"></span> 사진
-          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple data-upload="post" data-insert="content" hidden>
-        </label>
-        <span class="tool-hint">유튜브 주소를 한 줄에 따로 붙여넣으면 영상으로 보여요</span>
-        <span class="upload-status" id="upload-status" aria-live="polite"></span>
+    <div class="editor-wrap">
+      <div class="ed-toolbar" role="toolbar" aria-label="글쓰기 도구">
+        <div class="ed-row">
+          <select class="ed-select" data-cmd="fontSize" title="글자 크기" aria-label="글자 크기">
+            <option value="">크기</option>
+            <option value="2">작게</option><option value="3">보통</option><option value="4">크게</option>
+            <option value="5">아주 크게</option><option value="6">제목</option>
+          </select>
+          <span class="ed-sep"></span>
+          <button type="button" class="ed-btn icon" data-cmd="bold" title="굵게"><b>B</b></button>
+          <button type="button" class="ed-btn icon" data-cmd="italic" title="기울임"><i>I</i></button>
+          <button type="button" class="ed-btn icon" data-cmd="underline" title="밑줄"><u>U</u></button>
+          <button type="button" class="ed-btn icon" data-cmd="strikeThrough" title="취소선"><s>S</s></button>
+          <button type="button" class="ed-btn icon" data-panel="color" title="글자색"><span class="color-a">A</span></button>
+          <button type="button" class="ed-btn icon" data-panel="bg" title="배경색"><span class="color-bg">A</span></button>
+          <span class="ed-sep"></span>
+          <button type="button" class="ed-btn icon" data-cmd="justifyLeft" title="왼쪽 정렬">⇤</button>
+          <button type="button" class="ed-btn icon" data-cmd="justifyCenter" title="가운데 정렬">≡</button>
+          <button type="button" class="ed-btn icon" data-cmd="justifyRight" title="오른쪽 정렬">⇥</button>
+          <span class="ed-sep"></span>
+          <button type="button" class="ed-btn icon" data-cmd="formatBlock" data-value="blockquote" title="인용">❝</button>
+          <button type="button" class="ed-btn icon" data-cmd="insertHorizontalRule" title="구분선">―</button>
+          <button type="button" class="ed-btn icon" data-cmd="createLink" title="링크">🔗</button>
+          <button type="button" class="ed-btn icon" data-cmd="removeFormat" title="서식 지우기">⌫</button>
+        </div>
+        <div class="ed-row ed-insert">
+          <label class="ed-btn" title="이미지 (여러 장 가능)"><span class="ico ico-img"></span>이미지
+            <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple data-ed-upload="image" hidden></label>
+          <label class="ed-btn" title="동영상 (최대 {{ video_max_mb }}MB)"><span class="ico ico-video"></span>동영상
+            <input type="file" accept="video/mp4,video/webm,video/quicktime" data-ed-upload="video" hidden></label>
+          <button type="button" class="ed-btn" data-panel="con"><span class="ico ico-con"></span>커뮤콘</button>
+          <button type="button" class="ed-btn" data-panel="youtube"><span class="ico ico-yt"></span>유튜브</button>
+          <button type="button" class="ed-btn" data-panel="link"><span class="ico ico-link"></span>외부 콘텐츠</button>
+          <button type="button" class="ed-btn" data-panel="series"><span class="ico ico-series"></span>시리즈</button>
+          {% if not post %}<button type="button" class="ed-btn" data-open-poll><span class="ico ico-poll"></span>투표</button>{% endif %}
+          <button type="button" class="ed-btn" data-panel="ai"><span class="ico ico-ai"></span>AI 이미지</button>
+          <span class="upload-status" id="upload-status" aria-live="polite"></span>
+        </div>
       </div>
-      <textarea name="content" id="content" rows="18" maxlength="20000" required placeholder="내용을 입력하세요" aria-label="내용" data-counter="content-count">{{ form.content }}</textarea>
-      <div class="image-tray" id="image-tray" {{ 'hidden' if not images }}>
-        {% for up in images %}
-        <button type="button" class="tray-item" data-token="[[img:{{ up.id }}]]" title="본문에 한 번 더 넣기">
-          <img src="{{ up.path|con_url }}" alt="">
-        </button>
+
+      {# ---------- 도구 패널 ---------- #}
+      <div class="ed-panel" data-panel-body="color" hidden>
+        <div class="palette">
+          {% for c in ['#1f1f1f','#7a7a7a','#c8453b','#e07b39','#d4a017','#3d8b4f','#2f6fb5','#6b4fb5','#b5487a','#ffffff'] %}
+          <button type="button" class="swatch" style="background: {{ c }}" data-color="{{ c }}" data-cmd-color="foreColor" title="{{ c }}"></button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="ed-panel" data-panel-body="bg" hidden>
+        <div class="palette">
+          {% for c in ['transparent','#fff3a8','#ffd6cc','#d6f0d6','#d6e6ff','#ece0ff','#eeeeee'] %}
+          <button type="button" class="swatch {{ 'none' if c == 'transparent' }}" style="background: {{ c }}" data-color="{{ c }}" data-cmd-color="hiliteColor" title="{{ '없음' if c == 'transparent' else c }}"></button>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="ed-panel" data-panel-body="con" hidden>
+        {% if my_packs %}
+        <div class="con-tabs">
+          {% for pack in my_packs %}
+          <button type="button" class="con-tab {{ 'on' if loop.first }}" data-pack="{{ pack.id }}" title="{{ pack.name }}">
+            {% if pack.thumbnail %}<img src="{{ pack.thumbnail.path|con_url }}" alt="{{ pack.name }}">{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+        {% for pack in my_packs %}
+        <div class="con-items" data-pack="{{ pack.id }}" {{ 'hidden' if not loop.first }}>
+          {% for item in pack.items %}
+          <button type="button" class="con-item" data-ed-con="{{ item.id }}" data-src="{{ item.path|con_url }}"><img src="{{ item.path|con_url }}" alt="" loading="lazy"></button>
+          {% endfor %}
+        </div>
         {% endfor %}
+        {% else %}
+        <p class="empty">보유한 커뮤콘이 없어요. <a class="u" href="{{ url_for('cons.shop') }}" target="_blank">커뮤콘 상점</a>에서 구해보세요.</p>
+        {% endif %}
+      </div>
+      <div class="ed-panel" data-panel-body="youtube" hidden>
+        <div class="row"><input type="url" placeholder="유튜브 또는 Vimeo 주소를 붙여넣으세요" data-embed-input="video">
+          <button type="button" class="btn btn-sm" data-embed-go="video">넣기</button></div>
+      </div>
+      <div class="ed-panel" data-panel-body="link" hidden>
+        <div class="row"><input type="url" placeholder="https:// 로 시작하는 웹페이지 주소 (제목·요약·대표 이미지를 카드로 보여줘요)" data-embed-input="link">
+          <button type="button" class="btn btn-sm" data-embed-go="link">가져오기</button></div>
+      </div>
+      <div class="ed-panel" data-panel-body="series" hidden>
+        <p class="small muted">시리즈로 묶으면 글 아래에 같은 시리즈의 다른 글 목록이 보여요.</p>
+        <div class="series-list" id="series-list">
+          <label class="check small"><input type="radio" name="_series" value="" {{ 'checked' if not form.series_id }}> 시리즈 없음</label>
+          {% for s in my_series %}
+          <label class="check small"><input type="radio" name="_series" value="{{ s.id }}" data-title="{{ s.title }}" {{ 'checked' if form.series_id == s.id }}> {{ s.title }}</label>
+          {% endfor %}
+        </div>
+        <div class="row"><input maxlength="40" placeholder="새 시리즈 이름" id="new-series">
+          <button type="button" class="btn btn-light btn-sm" id="create-series">만들기</button></div>
+      </div>
+      <div class="ed-panel" data-panel-body="ai" hidden>
+        <p class="small muted">만들고 싶은 그림을 설명해 주세요. 한 장에 <strong>{{ ai_cost|comma }}P</strong>, 하루 {{ ai_daily }}장까지.
+          {% if g.user %}(보유 {{ g.user.points|comma }}P){% endif %}</p>
+        <textarea rows="3" maxlength="300" id="ai-prompt" placeholder="예: 창가에서 햇볕 쬐는 치즈 고양이, 수채화 느낌"></textarea>
+        <div class="right-row"><button type="button" class="btn btn-sm" id="ai-go">이미지 만들기</button></div>
+      </div>
+
+      <div id="editor" class="editor-body post-body" contenteditable="true" spellcheck="false"
+           data-placeholder="내용을 입력해 주세요. 사진은 붙여넣기(Ctrl+V)나 끌어다 놓기로도 넣을 수 있어요.">{{ form.html }}</div>
+      <div class="ed-foot">
+        <span class="series-chip" id="series-chip" {{ 'hidden' if not form.series_id }}>시리즈: <strong id="series-chip-title">{% for s in my_series if s.id == form.series_id %}{{ s.title }}{% endfor %}</strong></span>
+        <span class="muted"><span id="char-count">0</span> / 20,000자</span>
       </div>
     </div>
 
     {% if not post %}
     {% set pf = poll_form %}
-    <details class="poll-builder" {{ 'open' if pf and pf.get('poll_on') }}>
-      <summary><span class="ico ico-poll"></span> 투표 추가</summary>
+    <details class="poll-builder" id="poll-builder" {{ 'open' if pf and pf.get('poll_on') }}>
+      <summary><span class="ico ico-poll"></span> 투표</summary>
       <input type="hidden" name="poll_on" value="" id="poll-on">
       <div class="poll-fields">
         <input name="poll_question" maxlength="100" placeholder="투표 질문 (예: 점심 메뉴 뭐 먹지?)" value="{{ pf.get('poll_question', '') if pf else '' }}" aria-label="투표 질문">
@@ -67,13 +159,11 @@
     {% endif %}
 
     <div class="form-actions">
-      <span class="hint">
-        {% if post %}수정해도 포인트는 그대로예요.{% else %}글을 등록하면 <strong>+{{ POINTS_POST }}P</strong>를 받아요. (삭제 시 회수){% endif %}
-        · <span id="content-count">0</span>/20,000
-      </span>
+      <span class="hint">{% if post %}수정해도 포인트는 그대로예요.{% else %}글을 등록하면 <strong>+{{ POINTS_POST }}P</strong>를 받아요. (삭제 시 회수){% endif %}</span>
       <a class="btn btn-light" href="{{ url_for('board.post', slug=community.slug, post_id=post.id) if post else url_for('board.communi', slug=community.slug) }}">취소</a>
       <button class="btn">{{ '수정' if post else '등록' }}</button>
     </div>
   </form>
 </section>
+<script type="module" src="{{ url_for('static', filename='js/editor.js') }}?v=6"></script>
 {% endblock %}

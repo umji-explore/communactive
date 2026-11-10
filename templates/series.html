@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ series.title }} (시리즈) - {% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <h1 class="card-title"><span class="ico ico-series"></span> {{ series.title }}</h1>
+    <span class="muted small">{{ owner.nickname if owner else '' }}님의 시리즈 · {{ posts|length }}편</span>
+  </div>
+  {% if posts %}
+  <ol class="series-list-view big">
+    {% for p in posts %}
+    <li>
+      <a href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">{{ p.title }}</a>
+      <span class="muted small">{{ p.community.name }} · {{ p.created_at|short_time }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="empty">아직 이 시리즈에 글이 없어요.</p>
+  {% endif %}
+</section>
+{% endblock %}

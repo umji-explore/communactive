@@ -4,10 +4,12 @@ import click
 from flask import Flask, g, render_template, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+import ai
 import auth
 import board
 import captcha
 import cons
+import embeds
 import main
 import schema
 import uploads
@@ -28,7 +30,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     register_template_helpers(app)
 
-    for module in (main, auth, board, cons, captcha, uploads):
+    for module in (main, auth, board, cons, captcha, uploads, embeds, ai):
         app.register_blueprint(module.bp)
 
     @app.before_request

@@ -32,12 +32,14 @@
   <td class="col-title">
     <a href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
       {% if show_communi %}<span class="tag">{{ p.community.name }}</span>{% endif %}
-      {% if p.category %}<span class="cat">[{{ p.category }}]</span>{% endif %}
+      {% if p.board %}<span class="cat">[{{ p.board.name }}]</span>{% elif p.category %}<span class="cat">[{{ p.category }}]</span>{% endif %}
       {% if p.upvotes >= config.POPULAR_MIN_UPVOTES and not notice %}<span class="hot">인기</span>{% endif %}
       {{ p.title }}
     </a>
     {% if p.has_image %}<span class="ico ico-img" title="사진"></span>{% endif %}
+    {% if p.has_video %}<span class="ico ico-video" title="동영상"></span>{% endif %}
     {% if p.has_poll %}<span class="ico ico-poll" title="투표"></span>{% endif %}
+    {% if p.series_id %}<span class="ico ico-series" title="시리즈"></span>{% endif %}
     {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
     <div class="mobile-meta">{{ p.author.nickname }} · {{ p.created_at|short_time }} · 조회 {{ p.views }} · 추천 {{ p.upvotes }}</div>
   </td>

@@ -10,7 +10,7 @@ import os
 import uuid
 from datetime import timedelta
 
-from flask import Blueprint, current_app, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request, session
 from PIL import Image, ImageOps
 
 from models import Upload, db, utcnow
@@ -27,8 +27,11 @@ SPECS = {
     "avatar": (240, True, 0),
     "icon": (160, True, 0),
     "banner": (1400, False, 0),
+    "ai": (1600, False, 0),
 }
-CONTENT_TYPES = {"gif": "image/gif", "webp": "image/webp", "png": "image/png", "jpg": "image/jpeg"}
+CONTENT_TYPES = {"gif": "image/gif", "webp": "image/webp", "png": "image/png", "jpg": "image/jpeg",
+                 "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime"}
+VIDEO_TYPES = {"video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov"}
 MAX_RAW = 4_400_000
 UPLOADS_PER_HOUR = 120
 
@@ -123,12 +126,87 @@ def owned_upload(upload_id, user, kind):
     return None
 
 
+def sniff_video(head):
+    if head[4:8] == b"ftyp":
+        return "mov" if head[8:10] == b"qt" else "mp4"
+    if head[:4] == b"\x1a\x45\xdf\xa3":
+        return "webm"
+    return None
+
+
+def _rate_limited(user):
+    since = utcnow() - timedelta(hours=1)
+    return Upload.query.filter(Upload.user_id == user.id, Upload.created_at >= since).count() >= UPLOADS_PER_HOUR
+
+
 @bp.route("/upload", methods=["POST"])
 def upload():
     if g.user is None:
         return jsonify(error="로그인이 필요합니다."), 401
+    kind = request.form.get("kind", "")
     try:
-        up = save_upload(g.user, request.files.get("file"), request.form.get("kind", ""))
+        if kind == "video":  # Blob 이 없는 로컬 개발용: 4MB 이하 동영상은 서버로 바로
+            if _rate_limited(g.user):
+                raise UploadError("파일을 너무 많이 올렸어요. 잠시 후 다시 시도해주세요.")
+            f = request.files.get("file")
+            data = f.read(MAX_RAW + 1) if f else b""
+            ext = sniff_video(data[:16])
+            if not ext:
+                raise UploadError("MP4, WEBM, MOV 동영상만 올릴 수 있어요.")
+            if len(data) > MAX_RAW:
+                raise UploadError("이 환경에서는 4MB 이하 동영상만 올릴 수 있어요.")
+            up = Upload(user_id=g.user.id, kind="video", path=store(data, ext, "video"))
+            db.session.add(up)
+            db.session.commit()
+        else:
+            up = save_upload(g.user, request.files.get("file"), kind)
     except UploadError as e:
         return jsonify(error=str(e)), 400
     return jsonify(id=up.id, url=con_url(up.path), width=up.width, height=up.height)
+
+
+# ---------- 동영상: 브라우저 → Vercel Blob 직접 업로드 ----------
+
+@bp.route("/upload/video-token", methods=["POST"])
+def video_token():
+    """큰 동영상은 서버를 거치지 않고 브라우저가 Blob 에 바로 올린다. 서버는 짧은 수명의 토큰만 준다."""
+    if g.user is None:
+        return jsonify(error="로그인이 필요합니다."), 401
+    cfg = current_app.config
+    ctype = (request.form.get("type") or "").lower()
+    size = request.form.get("size", type=int) or 0
+    if ctype not in VIDEO_TYPES:
+        return jsonify(error="MP4, WEBM, MOV 동영상만 올릴 수 있어요."), 400
+    if size > cfg["VIDEO_MAX_BYTES"]:
+        return jsonify(error=f"동영상은 {cfg['VIDEO_MAX_BYTES'] // (1024 * 1024)}MB 까지 올릴 수 있어요."), 400
+    if _rate_limited(g.user):
+        return jsonify(error="파일을 너무 많이 올렸어요. 잠시 후 다시 시도해주세요."), 429
+    rw = os.environ.get("BLOB_READ_WRITE_TOKEN")
+    if not (cfg["USE_BLOB"] and rw):
+        return jsonify(mode="local")
+    from blobtoken import generate_client_token
+    pathname = f"uploads/video/{utcnow():%Y%m}/{uuid.uuid4().hex}.{VIDEO_TYPES[ctype]}"
+    token = generate_client_token(rw, pathname, list(VIDEO_TYPES), cfg["VIDEO_MAX_BYTES"], valid_seconds=900)
+    pending = session.get("video_paths", [])[-4:] + [pathname]
+    session["video_paths"] = pending
+    return jsonify(mode="blob", token=token, pathname=pathname)
+
+
+@bp.route("/upload/video-done", methods=["POST"])
+def video_done():
+    """브라우저가 Blob 업로드를 마친 뒤 알려준다. 우리가 발급한 경로가 맞는지 확인하고 기록한다."""
+    if g.user is None:
+        return jsonify(error="로그인이 필요합니다."), 401
+    from blobtoken import store_id_from_token
+    pathname = request.form.get("pathname") or ""
+    url = request.form.get("url") or ""
+    store_id = store_id_from_token(os.environ.get("BLOB_READ_WRITE_TOKEN"))
+    if pathname not in session.get("video_paths", []) or not store_id:
+        return jsonify(error="잘못된 요청입니다."), 400
+    if url != f"https://{store_id}.public.blob.vercel-storage.com/{pathname}":
+        return jsonify(error="잘못된 요청입니다."), 400
+    session["video_paths"] = [p for p in session.get("video_paths", []) if p != pathname]
+    up = Upload(user_id=g.user.id, kind="video", path=url)
+    db.session.add(up)
+    db.session.commit()
+    return jsonify(id=up.id, url=url)

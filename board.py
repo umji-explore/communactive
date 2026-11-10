@@ -1,13 +1,15 @@
-"""커뮤니티 (게시판) / 게시글 / 댓글 / 추천 / 투표 / 검색 / 커뮤니티 관리"""
+"""커뮤니티 / 게시판 / 게시글 / 댓글 / 추천 / 투표 / 시리즈 / 검색 / 커뮤니티 관리"""
 import re
 from datetime import timedelta
 
-from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
+from flask import (Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, session,
+                   url_for)
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
-from models import (Comment, Community, ConItem, Poll, PollOption, PollVote, Post, Upload, UserConPack, Vote, db,
-                    utcnow)
+import content as content_mod
+from models import (Board, Comment, Community, ConItem, Poll, PollOption, PollVote, Post, Series, User, UserConPack,
+                    Vote, db, utcnow)
 from uploads import owned_upload
 from utils import (add_points, community_popular, cooldown_left, image_token_ids, login_required, popular_filter,
                    render_body, reward_amount)
@@ -16,6 +18,7 @@ bp = Blueprint("board", __name__)
 SLUG_RE = re.compile(r"^[a-z0-9_]{2,20}$")
 RESERVED_SLUGS = {"new", "admin", "api", "static"}
 POLL_DAYS = {0: "마감 없음", 1: "1일", 3: "3일", 7: "7일"}
+MAX_BOARDS = 20
 
 
 def get_community(slug):
@@ -39,31 +42,8 @@ def can_delete(obj, community):
     return can_edit(obj) or community.is_manager(g.user)
 
 
-def validate_post(title, content):
-    if not 1 <= len(title) <= 100:
-        return "제목은 1~100자로 입력해주세요."
-    if not 1 <= len(content) <= 20000:
-        return "내용은 1~20,000자로 입력해주세요."
-    return None
-
-
-def check_images(content, user_id):
-    """본문의 [[img:번호]] 중 글쓴이가 올린 사진만 인정. (사진 수 오류, 유효한 사진 있음 여부)"""
-    ids = image_token_ids(content)
-    if len(ids) > current_app.config["POST_MAX_IMAGES"]:
-        return f"사진은 글 하나에 {current_app.config['POST_MAX_IMAGES']}장까지 넣을 수 있어요.", False
-    if not ids:
-        return None, False
-    found = Upload.query.filter(Upload.id.in_(ids), Upload.user_id == user_id, Upload.kind == "post").count()
-    return None, found > 0
-
-
-def post_images(post):
-    ids = image_token_ids(post.content)
-    if not ids:
-        return {}
-    ups = Upload.query.filter(Upload.id.in_(ids), Upload.user_id == post.user_id, Upload.kind == "post")
-    return {u.id: u for u in ups}
+def validate_title(title):
+    return None if 1 <= len(title) <= 100 else "제목은 1~100자로 입력해주세요."
 
 
 def parse_poll(form):
@@ -86,9 +66,38 @@ def parse_poll(form):
     return {"question": question, "options": options, "multiple": bool(form.get("poll_multi")), "days": days}, None
 
 
-def clean_category(community, value):
-    value = (value or "").strip()
-    return value if value in community.category_list else None
+def pick_board(community, board_id, keep_id=None):
+    """글을 넣을 게시판 확인. (Board 또는 None, 오류)
+    keep_id: 수정할 때 원래 있던 게시판 (관리자 전용이어도 그대로 두는 건 허용)"""
+    boards = community.boards
+    if not boards:
+        return None, None
+    b = next((x for x in boards if x.id == board_id), None)
+    if not b:
+        return None, "게시판을 선택해주세요."
+    if b.manager_only and not community.is_manager(g.user) and b.id != keep_id:
+        return None, f"'{b.name}' 게시판은 관리자만 글을 쓸 수 있어요."
+    return b, None
+
+
+def pick_series(series_id, user_id):
+    if not series_id:
+        return None
+    s = db.session.get(Series, series_id)
+    return s if s and s.user_id == user_id else None
+
+
+def editor_context(community, post=None):
+    my_packs, my_series = [], []
+    if g.user:
+        my_packs = [up.pack for up in UserConPack.query.filter_by(user_id=g.user.id).order_by(UserConPack.id)]
+        my_series = Series.query.filter_by(user_id=(post.user_id if post else g.user.id)).order_by(Series.id.desc()).all()
+    return {
+        "community": community, "post": post, "poll_days": POLL_DAYS, "my_packs": my_packs, "my_series": my_series,
+        "boards": community.writable_boards(g.user),
+        "ai_cost": current_app.config["AI_IMAGE_COST"], "ai_daily": current_app.config["AI_IMAGE_DAILY"],
+        "video_max_mb": current_app.config["VIDEO_MAX_BYTES"] // (1024 * 1024),
+    }
 
 
 # ---------- 커뮤니티 ----------
@@ -140,10 +149,41 @@ def communi_new():
                 db.session.rollback()
                 error = "이미 존재하는 커뮤니티 이름 또는 주소입니다."
             else:
-                flash(f"'{c.name}' 커뮤니티가 만들어졌습니다! 관리 메뉴에서 아이콘과 배너를 꾸며보세요.", "success")
+                flash(f"'{c.name}' 커뮤니티가 만들어졌습니다! 관리 메뉴에서 게시판, 아이콘, 배너를 꾸며보세요.", "success")
                 return redirect(url_for("board.communi", slug=c.slug))
         flash(error, "error")
     return render_template("communi_new.html", form=form)
+
+
+def save_boards(community, form):
+    """관리 화면의 게시판 목록 저장. 화면에서 빠진 게시판은 삭제(글은 '게시판 없음'으로)."""
+    ids = form.getlist("board_id")
+    names = [n.strip() for n in form.getlist("board_name")]
+    perms = form.getlist("board_perm")
+    if not (len(ids) == len(names) == len(perms)):
+        return "잘못된 요청입니다."
+    rows = [(i, n, p) for i, n, p in zip(ids, names, perms) if n or i]
+    if len(rows) > MAX_BOARDS:
+        return f"게시판은 {MAX_BOARDS}개까지 만들 수 있어요."
+    if any(not 1 <= len(n) <= 20 for _, n, _ in rows):
+        return "게시판 이름은 1~20자로 정해주세요."
+    if len({n for _, n, _ in rows}) != len(rows):
+        return "같은 이름의 게시판이 있어요."
+    existing = {str(b.id): b for b in community.boards}
+    keep = set()
+    for order, (bid, name, perm) in enumerate(rows):
+        b = existing.get(bid)
+        if not b:
+            b = Board(community=community)
+            db.session.add(b)
+        b.name, b.sort_order, b.manager_only = name, order, perm == "manager"
+        if bid:
+            keep.add(bid)
+    for bid, b in existing.items():
+        if bid not in keep:
+            Post.query.filter_by(board_id=b.id).update({"board_id": None})
+            db.session.delete(b)
+    return None
 
 
 @bp.route("/c/<slug>/manage", methods=["GET", "POST"])
@@ -154,23 +194,12 @@ def manage(slug):
         abort(403)
     if request.method == "POST":
         description = request.form.get("description", "").strip()
-        cats = []
-        for line in request.form.get("categories", "").replace(",", "\n").split("\n"):
-            c = line.strip()
-            if c and c not in cats:
-                cats.append(c)
-        error = None
-        if len(description) > 200:
-            error = "소개는 200자 이하로 입력해주세요."
-        elif len(cats) > 10:
-            error = "말머리는 10개까지 만들 수 있어요."
-        elif any(len(c) > 10 for c in cats):
-            error = "말머리는 10자 이하로 정해주세요."
+        error = "소개는 200자 이하로 입력해주세요." if len(description) > 200 else save_boards(community, request.form)
         if error:
+            db.session.rollback()
             flash(error, "error")
         else:
             community.description = description
-            community.categories = "\n".join(cats)
             for field in ("icon", "banner"):
                 if request.form.get(f"remove_{field}"):
                     setattr(community, field, None)
@@ -189,27 +218,28 @@ def communi(slug):
     mode = request.args.get("mode", "all")
     page = request.args.get("page", 1, type=int)
     q = request.args.get("q", "").strip()
-    cat = clean_category(community, request.args.get("cat"))
+    board_id = request.args.get("board", type=int)
+    board = next((b for b in community.boards if b.id == board_id), None)
 
     query = Post.query.filter_by(community_id=community.id)
     if mode == "best":
         query = popular_filter(query)
     elif mode == "notice":
         query = query.filter(Post.is_notice.is_(True))
-    if cat:
-        query = query.filter(Post.category == cat)
+    if board:
+        query = query.filter(Post.board_id == board.id)
     if q:
-        query = query.filter(Post.title.contains(q) | Post.content.contains(q))
+        query = query.filter(Post.title.contains(q) | Post.text.contains(q))
     pagination = query.order_by(Post.id.desc()).paginate(
         page=page, per_page=current_app.config["POSTS_PER_PAGE"], error_out=False
     )
     notices = []
-    if mode == "all" and not cat and not q and page == 1:
+    if mode == "all" and not board and not q and page == 1:
         notices = (Post.query.filter_by(community_id=community.id, is_notice=True)
                    .order_by(Post.id.desc()).limit(5).all())
     return render_template(
         "communi.html", community=community, popular=community_popular(community),
-        pagination=pagination, mode=mode, q=q, cat=cat, notices=notices,
+        pagination=pagination, mode=mode, q=q, board=board, notices=notices,
     )
 
 
@@ -221,7 +251,7 @@ def search():
     communities = []
     if len(q) >= 2:
         pagination = (
-            Post.query.filter(Post.title.contains(q) | Post.content.contains(q))
+            Post.query.filter(Post.title.contains(q) | Post.text.contains(q))
             .order_by(Post.id.desc())
             .paginate(page=page, per_page=current_app.config["POSTS_PER_PAGE"], error_out=False)
         )
@@ -229,44 +259,103 @@ def search():
     return render_template("search.html", q=q, pagination=pagination, communities=communities)
 
 
+# ---------- 시리즈 ----------
+
+@bp.route("/series", methods=["POST"])
+def series_create():
+    if g.user is None:
+        return jsonify(error="로그인이 필요합니다."), 401
+    title = (request.form.get("title") or "").strip()
+    if not 1 <= len(title) <= 40:
+        return jsonify(error="시리즈 이름은 1~40자로 정해주세요."), 400
+    if Series.query.filter_by(user_id=g.user.id).count() >= 50:
+        return jsonify(error="시리즈는 50개까지 만들 수 있어요."), 400
+    s = Series(user_id=g.user.id, title=title)
+    db.session.add(s)
+    db.session.commit()
+    return jsonify(id=s.id, title=s.title)
+
+
+@bp.route("/series/<int:series_id>")
+def series_view(series_id):
+    s = db.session.get(Series, series_id) or abort(404)
+    posts = Post.query.filter_by(series_id=s.id).order_by(Post.id).all()
+    return render_template("series.html", series=s, posts=posts, owner=db.session.get(User, s.user_id))
+
+
 # ---------- 글 ----------
+
+def _save_post(community, post, form):
+    """글쓰기/수정 공통 처리. 성공하면 Post, 실패하면 오류 메시지(str)."""
+    title = form.get("title", "").strip()
+    error = validate_title(title)
+    if error:
+        return error
+    board, error = pick_board(community, form.get("board_id", type=int), post.board_id if post else None)
+    if error:
+        return error
+    author_id = post.user_id if post else g.user.id
+    author = post.author if post else g.user
+    try:
+        stored, text, has_image, has_video = content_mod.prepare(
+            form.get("content", ""), author, current_app.config["POST_MAX_IMAGES"])
+    except content_mod.ContentError as e:
+        return str(e)
+    series = pick_series(form.get("series_id", type=int), author_id)
+    if post is None:
+        poll, error = parse_poll(form)
+        if error:
+            return error
+        wait = cooldown_left(g.user.last_post_at, current_app.config["POST_COOLDOWN"])
+        if wait:
+            return f"도배 방지: {wait}초 후에 다시 작성할 수 있습니다."
+        reward = reward_amount(g.user, "post")
+        post = Post(community_id=community.id, user_id=g.user.id, points_awarded=reward, has_poll=bool(poll))
+        db.session.add(post)
+        post.title, post.content, post.text, post.fmt = title, stored, text, "html"
+        post.has_image, post.has_video, post.board_id = has_image, has_video, board.id if board else None
+        post.series_id = series.id if series else None
+        db.session.flush()
+        if poll:
+            ends = utcnow() + timedelta(days=poll["days"]) if poll["days"] else None
+            p = Poll(post_id=post.id, question=poll["question"], multiple=poll["multiple"], ends_at=ends)
+            p.options = [PollOption(text=t, sort_order=i) for i, t in enumerate(poll["options"])]
+            db.session.add(p)
+        g.user.last_post_at = utcnow()
+        if reward:
+            add_points(g.user, reward, "post", f"글 작성: {title}")
+    else:
+        post.title, post.content, post.text, post.fmt = title, stored, text, "html"
+        post.has_image, post.has_video, post.board_id = has_image, has_video, board.id if board else None
+        post.series_id = series.id if series else None
+        post.updated_at = utcnow()
+    db.session.commit()
+    return post
+
 
 @bp.route("/c/<slug>/write", methods=["GET", "POST"])
 @login_required
 def write(slug):
     community = get_community(slug)
-    form = {"title": "", "content": "", "category": ""}
-    poll_form = None
+    ctx = editor_context(community)
+    if community.boards and not ctx["boards"]:
+        flash("이 커뮤니티에는 글을 쓸 수 있는 게시판이 없어요.", "error")
+        return redirect(url_for("board.communi", slug=slug))
+    form_state = {"title": "", "html": "", "board_id": request.args.get("board", type=int), "series_id": None}
     if request.method == "POST":
-        form = {k: request.form.get(k, "").strip() for k in form}
-        poll, poll_error = parse_poll(request.form)
-        poll_form = request.form
-        img_error, has_image = check_images(form["content"], g.user.id)
-        wait = cooldown_left(g.user.last_post_at, current_app.config["POST_COOLDOWN"])
-        error = validate_post(form["title"], form["content"]) or img_error or poll_error \
-            or (f"도배 방지: {wait}초 후에 다시 작성할 수 있습니다." if wait else None)
-        if error:
-            flash(error, "error")
-        else:
-            reward = reward_amount(g.user, "post")
-            post = Post(community_id=community.id, user_id=g.user.id, title=form["title"], content=form["content"],
-                        category=clean_category(community, form["category"]), has_image=has_image,
-                        has_poll=bool(poll), points_awarded=reward)
-            db.session.add(post)
-            db.session.flush()
-            if poll:
-                ends = utcnow() + timedelta(days=poll["days"]) if poll["days"] else None
-                p = Poll(post_id=post.id, question=poll["question"], multiple=poll["multiple"], ends_at=ends)
-                p.options = [PollOption(text=t, sort_order=i) for i, t in enumerate(poll["options"])]
-                db.session.add(p)
-            g.user.last_post_at = utcnow()
-            if reward:
-                add_points(g.user, reward, "post", f"글 작성: {form['title']}")
-            db.session.commit()
-            flash(f"글이 등록되었습니다. +{reward}P" if reward else "글이 등록되었습니다. (오늘 글 포인트 한도 도달)", "success")
-            return redirect(url_for("board.post", slug=slug, post_id=post.id))
-    return render_template("write.html", community=community, form=form, post=None, poll_form=poll_form,
-                           poll_days=POLL_DAYS, images=[])
+        result = _save_post(community, None, request.form)
+        if isinstance(result, Post):
+            r = result.points_awarded
+            flash(f"글이 등록되었습니다. +{r}P" if r else "글이 등록되었습니다. (오늘 글 포인트 한도 도달)", "success")
+            return redirect(url_for("board.post", slug=slug, post_id=result.id))
+        db.session.rollback()
+        flash(result, "error")
+        raw = request.form.get("content", "")
+        form_state = {"title": request.form.get("title", ""), "board_id": request.form.get("board_id", type=int),
+                      "series_id": request.form.get("series_id", type=int),
+                      "html": content_mod.render(content_mod.clean_html(raw), g.user.id, editing=True)}
+    return render_template("write.html", form=form_state, poll_form=request.form if request.method == "POST" else None,
+                           **ctx)
 
 
 @bp.route("/c/<slug>/<int:post_id>/edit", methods=["GET", "POST"])
@@ -276,23 +365,23 @@ def edit(slug, post_id):
     p = get_post(community, post_id)
     if not can_edit(p):
         abort(403)
-    form = {"title": p.title, "content": p.content, "category": p.category or ""}
+    ctx = editor_context(community, p)
+    if p.board and p.board not in ctx["boards"]:
+        ctx["boards"] = ctx["boards"] + [p.board]  # 관리자 전용 게시판의 글이라도 원래 게시판은 유지 가능
+    stored = p.content if p.fmt == "html" else content_mod.legacy_to_html(p.content)
+    form_state = {"title": p.title, "board_id": p.board_id, "series_id": p.series_id,
+                  "html": content_mod.render(stored, p.user_id, editing=True)}
     if request.method == "POST":
-        form = {k: request.form.get(k, "").strip() for k in form}
-        img_error, has_image = check_images(form["content"], p.user_id)
-        error = validate_post(form["title"], form["content"]) or img_error
-        if error:
-            flash(error, "error")
-        else:
-            p.title, p.content, p.updated_at = form["title"], form["content"], utcnow()
-            p.category = clean_category(community, form["category"])
-            p.has_image = has_image
-            db.session.commit()
+        result = _save_post(community, p, request.form)
+        if isinstance(result, Post):
             flash("글이 수정되었습니다.", "success")
             return redirect(url_for("board.post", slug=slug, post_id=p.id))
-    images = list(post_images(p).values())
-    return render_template("write.html", community=community, form=form, post=p, poll_form=None,
-                           poll_days=POLL_DAYS, images=images)
+        db.session.rollback()
+        flash(result, "error")
+        form_state.update(title=request.form.get("title", ""),
+                          html=content_mod.render(content_mod.clean_html(request.form.get("content", "")),
+                                                  p.user_id, editing=True))
+    return render_template("write.html", form=form_state, poll_form=None, **ctx)
 
 
 @bp.route("/c/<slug>/<int:post_id>")
@@ -314,9 +403,17 @@ def post(slug, post_id):
         if p.poll:
             pv = PollVote.query.filter_by(poll_id=p.poll.id, user_id=g.user.id).first()
             my_poll = pv.option_set if pv else None
+    if p.fmt == "html":
+        body = content_mod.render(p.content, p.user_id)
+    else:
+        from models import Upload
+        ids = image_token_ids(p.content)
+        imgs = {u.id: u for u in Upload.query.filter(Upload.id.in_(ids), Upload.user_id == p.user_id)} if ids else {}
+        body = render_body(p.content, imgs)
+    series_posts = Post.query.filter_by(series_id=p.series_id).order_by(Post.id).limit(100).all() if p.series_id else []
     return render_template(
         "post.html", community=community, post=p, my_vote=my_vote, my_packs=my_packs, my_poll=my_poll,
-        body=render_body(p.content, post_images(p)), popular=community_popular(community),
+        body=body, series_posts=series_posts, popular=community_popular(community),
         can_edit=can_edit(p), can_delete=can_delete(p, community), is_manager=community.is_manager(g.user),
     )
 

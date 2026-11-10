@@ -46,9 +46,15 @@ class Community(db.Model):
     creator = db.relationship("User")
     posts = db.relationship("Post", back_populates="community", lazy="dynamic", cascade="all, delete-orphan")
 
+    boards = db.relationship("Board", backref="community", cascade="all, delete-orphan",
+                             order_by="Board.sort_order, Board.id", lazy="selectin")
+
     @property
     def category_list(self):
         return [c for c in (self.categories or "").split("\n") if c]
+
+    def writable_boards(self, user):
+        return [b for b in self.boards if not b.manager_only or self.is_manager(user)]
 
     def is_manager(self, user):
         return user is not None and (user.id == self.creator_id or user.is_admin)
@@ -71,8 +77,15 @@ class Post(db.Model):
     is_notice = db.Column(db.Boolean, default=False, nullable=False)  # 공지 (커뮤니티 관리자가 지정)
     has_image = db.Column(db.Boolean, default=False, nullable=False)
     has_poll = db.Column(db.Boolean, default=False, nullable=False)
+    has_video = db.Column(db.Boolean, default=False, nullable=False)
+    board_id = db.Column(db.Integer, db.ForeignKey("board.id"), index=True)     # 커뮤니티 안의 게시판
+    series_id = db.Column(db.Integer, db.ForeignKey("series.id"), index=True)   # 시리즈
+    fmt = db.Column(db.String(10), default="text", nullable=False)  # text(예전 글) / html(에디터 글)
+    text = db.Column(db.Text)  # 검색·미리보기용 순수 글자
 
     poll = db.relationship("Poll", uselist=False, back_populates="post", cascade="all, delete-orphan")
+    board = db.relationship("Board", lazy="joined")
+    series = db.relationship("Series", lazy="joined")
 
     # 목록에서 글쓴이/커뮤니티 이름을 함께 가져와 쿼리 수를 줄인다
     author = db.relationship("User", lazy="joined")
@@ -145,6 +158,36 @@ class UserConPack(db.Model):
     pack = db.relationship("ConPack", lazy="joined")
 
     __table_args__ = (db.UniqueConstraint("user_id", "pack_id", name="uq_user_pack"),)
+
+
+class Board(db.Model):
+    """커뮤니티 안의 게시판 (글 종류 나누기). 커뮤니티 관리자가 만든다."""
+    id = db.Column(db.Integer, primary_key=True)
+    community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
+    name = db.Column(db.String(20), nullable=False)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    manager_only = db.Column(db.Boolean, default=False, nullable=False)  # 관리자만 글쓰기 (예: 공지 게시판)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+
+class Series(db.Model):
+    """글 묶음 (연재). 글쓴이가 만들고 자기 글을 넣는다."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    title = db.Column(db.String(40), nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+
+class LinkPreview(db.Model):
+    """외부 콘텐츠 카드 (링크의 제목/설명/대표 이미지)"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    url = db.Column(db.String(1000), nullable=False)
+    title = db.Column(db.String(200), default="")
+    description = db.Column(db.String(300), default="")
+    image = db.Column(db.String(1000), default="")
+    site = db.Column(db.String(100), default="")
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
 
 class Upload(db.Model):

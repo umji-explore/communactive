@@ -52,6 +52,13 @@ class Config:
     CON_MAX_FILES = 30                      # 콘 하나당 최대 이미지 수
     CON_MAX_PRICE = 100000
     POST_MAX_IMAGES = 30                    # 글 하나당 최대 사진 수
+    VIDEO_MAX_BYTES = _int("VIDEO_MAX_MB", 100) * 1024 * 1024  # 동영상 최대 크기 (브라우저 → Blob 직접 업로드)
+
+    # AI 이미지 (Vercel AI Gateway). 비용 관리를 위해 포인트 차감 + 하루 횟수 제한
+    AI_IMAGE_MODEL = os.environ.get("AI_IMAGE_MODEL", "bfl/flux-3-image-klein")
+    AI_IMAGE_COST = _int("AI_IMAGE_COST", 300)          # 한 장에 드는 포인트
+    AI_IMAGE_DAILY = _int("AI_IMAGE_DAILY", 5)          # 1인당 하루 최대
+    AI_IMAGE_SITE_DAILY = _int("AI_IMAGE_SITE_DAILY", 100)  # 사이트 전체 하루 최대 (비용 상한)
 
 
     # 포인트
