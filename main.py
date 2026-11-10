@@ -10,7 +10,7 @@ bp = Blueprint("main", __name__)
 
 
 def hot_communities(limit=10):
-    """인기 커뮤: 최근 24시간 글 수 → 전체 글 수 순"""
+    """인기 커뮤니티: 최근 24시간 글 수 → 전체 글 수 순"""
     since = utcnow() - timedelta(days=1)
     recent = db.func.count(Post.id).filter(Post.created_at >= since)
     return (
