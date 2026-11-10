@@ -1,6 +1,7 @@
 """회원가입 (식별 코드 + 비밀번호 + 보안 코드) · 로그인 · 비밀번호 찾기(복구 코드) · 탈퇴"""
 import re
 import secrets
+import time
 from datetime import timedelta
 
 from flask import Blueprint, flash, g, redirect, render_template, request, session, url_for
@@ -18,6 +19,8 @@ RESERVED_USERNAMES = {"admin", "administrator", "root", "communactive", "manager
 USERNAME_RE = re.compile(r"^[a-z][a-z0-9_]{3,19}$")
 MAX_LOGIN_FAILS = 5
 LOCK_MINUTES = 10
+ADMIN_LOGIN_FAILS = 3
+ADMIN_LOCK_MINUTES = 30
 SIGNUPS_PER_IP_PER_HOUR = 3
 RECOVERY_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 _DUMMY_HASH = generate_password_hash("dummy-password-for-timing")
@@ -69,7 +72,8 @@ def normalize_recovery(code):
 def login_user(user):
     session.clear()
     session["uid"] = user.id
-    session.permanent = True
+    session["login_at"] = time.time()
+    session.permanent = not user.is_admin  # 사이트 관리자는 브라우저를 닫으면 로그아웃
 
 
 # ---------- 로그인 ----------
@@ -98,8 +102,10 @@ def login():
                 check_password_hash(_DUMMY_HASH, password)  # 계정 존재 여부가 응답 시간으로 드러나지 않게
             else:
                 user.failed_logins += 1
-                if user.failed_logins >= MAX_LOGIN_FAILS:
-                    user.failed_logins, user.locked_until = 0, now + timedelta(minutes=LOCK_MINUTES)
+                # 사이트 관리자 계정은 더 엄격하게: 3번 틀리면 30분 잠금
+                limit, lock = (ADMIN_LOGIN_FAILS, ADMIN_LOCK_MINUTES) if user.is_admin else (MAX_LOGIN_FAILS, LOCK_MINUTES)
+                if user.failed_logins >= limit:
+                    user.failed_logins, user.locked_until = 0, now + timedelta(minutes=lock)
                 db.session.commit()
             flash("식별 코드 또는 비밀번호가 올바르지 않습니다.", "error")
     return render_template("login.html", username=username, next=next_url)

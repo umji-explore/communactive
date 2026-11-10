@@ -66,11 +66,14 @@ def prepare(raw, user, max_images=30):
     def ids(kind):
         return {int(i) for _, k, i in found if k == kind and i.isdigit()}
 
-    up_ids = ids("image") | ids("video")
-    uploads = {u.id: u for u in Upload.query.filter(Upload.id.in_(up_ids), Upload.user_id == user.id)} if up_ids else {}
-    owned_packs = {r.pack_id for r in UserConPack.query.filter_by(user_id=user.id)}
-    cons = {c.id: c for c in ConItem.query.filter(ConItem.id.in_(ids("con")))} if ids("con") else {}
-    links = {lp.id for lp in LinkPreview.query.filter(LinkPreview.id.in_(ids("link")))} if ids("link") else set()
+    if user is None:  # 익명: 사진·동영상·커뮤콘·링크 카드는 못 씀 (유튜브/Vimeo 만)
+        uploads, owned_packs, cons, links = {}, set(), {}, set()
+    else:
+        up_ids = ids("image") | ids("video")
+        uploads = {u.id: u for u in Upload.query.filter(Upload.id.in_(up_ids), Upload.user_id == user.id)} if up_ids else {}
+        owned_packs = {r.pack_id for r in UserConPack.query.filter_by(user_id=user.id)}
+        cons = {c.id: c for c in ConItem.query.filter(ConItem.id.in_(ids("con")))} if ids("con") else {}
+        links = {lp.id for lp in LinkPreview.query.filter(LinkPreview.id.in_(ids("link")))} if ids("link") else set()
 
     has_image = has_video = False
     n_images = 0
@@ -81,7 +84,7 @@ def prepare(raw, user, max_images=30):
         ok = False
         if kind == "image" and ident.isdigit():
             u = uploads.get(int(ident))
-            ok = bool(u and u.kind in ("post", "ai"))
+            ok = bool(u and u.kind == "post")
             if ok:
                 has_image, n_images = True, n_images + 1
         elif kind == "video" and ident.isdigit():
@@ -126,8 +129,6 @@ def _render_figure(kind, ident, ctx, editing):
             size = f' width="{u.width}" height="{u.height}"' if u.width else ""
             img = f'<img src="{src}"{size} loading="lazy" alt="">'
             body = img if editing else f'<a href="{src}" target="_blank" rel="noopener">{img}</a>'
-            if u.kind == "ai":
-                body += '<figcaption>AI 생성 이미지</figcaption>'
         return head + body + rm + "</figure>"
     if kind == "con":
         c = ctx["cons"].get(int(ident))

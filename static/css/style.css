@@ -80,7 +80,7 @@ a.u { text-decoration: underline; text-underline-offset: 2px; }
 .top-link { color: #e6e6e6; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
 .top-link:hover { color: #fff; text-decoration: underline; }
 .top-sep { width: 1px; height: 11px; background: rgba(255,255,255,.3); }
-.nick { font-weight: 700; color: #fff; }
+.top-nick { font-weight: 700; color: #fff; }
 .points { color: #d8d8d8; font-weight: 600; }
 
 .menubar { background: var(--ink-2); border-bottom: 1px solid #000; }
@@ -629,3 +629,51 @@ a.cat:hover { text-decoration: none; color: var(--text); }
   #editor { min-height: 300px; padding: 12px; }
   .board-row { flex-wrap: wrap; }
 }
+
+/* ================= 계급 (닉네임 색) ================= */
+:root { --gold: #b8860b; --silver: #7d8792; --bronze: #a8662e; --purple: #7445c4; }
+@media (prefers-color-scheme: dark) { :root { --gold: #e3b93c; --silver: #c3cad2; --bronze: #d08a4e; --purple: #a98bf0; } }
+.nick { font-weight: 600; }
+.nick.rank-admin { color: var(--gold); font-weight: 800; }
+.nick.rank-manager { color: var(--silver); font-weight: 800; }
+.nick.rank-sub { color: var(--bronze); font-weight: 700; }
+.nick.rank-elder { color: var(--purple); font-weight: 700; }
+.nick.rank-member { color: var(--text); }
+.nick.rank-anon { color: var(--muted); font-weight: 400; }
+.anon-ip { font-size: 11px; margin-left: 2px; color: var(--muted); font-weight: 400; }
+.admin-badge { display: inline-block; margin-left: 4px; padding: 0 5px; border: 1px solid var(--gold); color: var(--gold);
+  border-radius: 3px; font-size: 10px; font-weight: 800; line-height: 15px; vertical-align: 1px; letter-spacing: 0; }
+.topbar .admin-badge { border-color: #e3b93c; color: #e3b93c; }
+.avatar-anon { background: var(--muted); }
+
+/* 익명 글쓰기 · 댓글 */
+.anon-fields { display: flex; gap: 6px; }
+.anon-fields input { flex: 1; }
+.anon-write { display: flex; flex-direction: column; gap: 4px; }
+.anon-write p { margin: 0; }
+.anon-captcha { max-width: 360px; }
+.anon-bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.anon-bottom label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 13px; max-width: 320px; }
+.anon-bottom small { font-weight: 400; color: var(--muted); }
+.anon-actions, .anon-del { display: inline-block; position: relative; }
+.anon-actions summary, .anon-del summary { list-style: none; cursor: pointer; }
+.anon-actions summary::-webkit-details-marker, .anon-del summary::-webkit-details-marker { display: none; }
+.anon-actions[open] form, .anon-del[open] form { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; }
+.anon-actions form input, .anon-del form input { width: 140px; height: 30px; }
+.c-actions { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+.c-head .c-actions form { margin-left: 0; }
+
+/* 관리: 승인 대기 · 부관리자 · 삭제 */
+.req-list, .staff-list { list-style: none; margin: 0; padding: 0; }
+.req-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.req-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.req-status { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.st-pending { color: var(--sub); } .st-approved { color: #3d7a4f; } .st-rejected { color: var(--point); }
+.staff-list { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; }
+.staff-list li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.staff-list .link-btn { font-size: 12px; }
+.danger-zone summary { cursor: pointer; color: var(--point); font-weight: 700; font-size: 13px; }
+.danger-zone[open] summary { margin-bottom: 8px; }
+.pending-dot { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--point); color: #fff; font-size: 11px; line-height: 18px; }
+.avatar-admin { background: var(--gold); }

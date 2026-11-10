@@ -10,7 +10,10 @@
   </div>
   <div class="ch-actions">
     {% if community.is_manager(g.user) %}
-      <a class="btn btn-light btn-sm" href="{{ url_for('board.manage', slug=community.slug) }}">관리</a>
+      {% set n_pending = community.requests.filter_by(status='pending').count() %}
+      <a class="btn btn-light btn-sm" href="{{ url_for('board.manage', slug=community.slug) }}">관리{% if n_pending %} <span class="pending-dot">{{ n_pending }}</span>{% endif %}</a>
+    {% elif community.is_sub(g.user) %}
+      <a class="btn btn-light btn-sm" href="{{ url_for('board.manage', slug=community.slug) }}">관리 (부관리자)</a>
     {% endif %}
     <a class="btn" href="{{ url_for('board.write', slug=community.slug) }}">글쓰기</a>
   </div>

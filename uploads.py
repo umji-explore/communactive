@@ -27,7 +27,6 @@ SPECS = {
     "avatar": (240, True, 0),
     "icon": (160, True, 0),
     "banner": (1400, False, 0),
-    "ai": (1600, False, 0),
 }
 CONTENT_TYPES = {"gif": "image/gif", "webp": "image/webp", "png": "image/png", "jpg": "image/jpeg",
                  "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime"}

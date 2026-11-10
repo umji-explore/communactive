@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   {# 로고 글자 전용 폰트: 로고에 쓰는 글자만 받아서 아주 가볍다 #}
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&text=communactive&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=6">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=8">
 </head>
 <body>
 {# 로고 옆 섹션 이름 (디시의 "dcinside | ○○ 갤러리" 처럼) #}
@@ -58,8 +58,9 @@
     </form>
     <div class="userbox">
       {% if g.user %}
-        <a class="nick" href="{{ url_for('main.mypage') }}">{{ g.user.nickname }}</a>
+        <a class="top-nick" href="{{ url_for('main.mypage') }}">{{ g.user.nickname }}{% if g.user.is_admin %} <span class="admin-badge">관리자</span>{% endif %}</a>
         <a class="points" href="{{ url_for('main.mypage') }}" title="내 포인트">{{ g.user.points|comma }}P</a>
+        {% if g.user.is_admin %}<a class="top-link" href="{{ url_for('admin.index') }}">사이트 관리</a>{% endif %}
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="top-link">로그아웃</button>

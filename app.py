@@ -1,21 +1,26 @@
 import os
+import time
 
 import click
 from flask import Flask, g, render_template, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-import ai
+import admin
 import auth
 import board
 import captcha
 import cons
 import embeds
 import main
+import ranks
 import schema
 import uploads
 from config import ON_VERCEL, Config
 from models import User, db
 from utils import check_csrf, register_template_helpers
+
+
+ADMIN_SESSION_SECONDS = 8 * 3600
 
 
 def create_app(config_class=Config):
@@ -29,14 +34,23 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     register_template_helpers(app)
+    app.jinja_env.globals["name_tag"] = ranks.name_tag
+    app.jinja_env.filters["public_name"] = ranks.public_name
 
-    for module in (main, auth, board, cons, captcha, uploads, embeds, ai):
+    for module in (main, auth, board, cons, captcha, uploads, embeds, admin):
         app.register_blueprint(module.bp)
 
     @app.before_request
     def load_user():
         uid = session.get("uid")
         g.user = db.session.get(User, uid) if uid else None
+        # 사이트 관리자 계정은 로그인 유지 시간을 짧게 (8시간). 오래된 세션은 다시 로그인해야 한다.
+        if g.user is not None and g.user.is_admin:
+            if time.time() - session.get("login_at", 0) > ADMIN_SESSION_SECONDS:
+                session.clear()
+                g.user = None
+        if g.user is None and uid:
+            session.pop("uid", None)
         check_csrf()
 
     @app.context_processor
@@ -67,19 +81,21 @@ def create_app(config_class=Config):
         }
         if code == 500:
             db.session.rollback()
-        msg = messages.get(code) if code != 400 else getattr(e, "description", None)
+        desc = getattr(e, "description", "") or ""
+        custom = any("가" <= ch <= "힣" for ch in desc)  # 우리가 직접 넣은 한국어 안내면 그대로 보여준다
+        msg = desc if custom else messages.get(code)
         return render_template("error.html", code=code, message=msg or "잘못된 요청입니다."), code
 
     @app.cli.command("make-admin")
-    @click.argument("nickname")
-    def make_admin(nickname):
-        """flask --app app make-admin <닉네임> : 관리자 지정 (모든 글/댓글 삭제 가능)"""
-        user = User.query.filter_by(nickname=nickname).first()
+    @click.argument("username")
+    def make_admin(username):
+        """flask --app app make-admin <식별 코드> : 사이트 관리자 지정 (금색 닉네임 + '관리자' 칭호)"""
+        user = User.query.filter_by(username=username.strip().lower()).first()
         if not user:
-            raise click.ClickException(f"'{nickname}' 회원이 없습니다.")
+            raise click.ClickException(f"식별 코드 '{username}' 회원이 없습니다.")
         user.is_admin = True
         db.session.commit()
-        click.echo(f"{nickname} 님을 관리자로 지정했습니다.")
+        click.echo(f"{user.nickname} 님을 사이트 관리자로 지정했습니다.")
 
     with app.app_context():
         schema.upgrade(db)  # 새 테이블 생성 + 기존 테이블에 빠진 컬럼 추가 (데이터 보존)

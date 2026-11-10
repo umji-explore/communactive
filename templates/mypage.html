@@ -7,7 +7,7 @@
     <div class="profile-head">
       <div class="img-preview avatar-preview" id="avatar-preview">{{ avatar(g.user, 72) }}</div>
       <div>
-        <h1 class="card-title">{{ g.user.nickname }}</h1>
+        <h1 class="card-title">{{ name_tag(g.user) }}</h1>
         <form method="post" action="{{ url_for('main.set_avatar') }}" class="avatar-form" id="avatar-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="avatar_id" id="avatar-id">

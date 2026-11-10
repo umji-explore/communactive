@@ -140,17 +140,17 @@ def preview(url):
 
 @bp.route("/embed", methods=["POST"])
 def embed():
-    if g.user is None:
-        return jsonify(error="로그인이 필요합니다."), 401
     url = (request.form.get("url") or "").strip()
     if len(url) > 1000:
         return jsonify(error="주소가 너무 길어요."), 400
     y = YOUTUBE_RE.match(url)
-    if y:
+    if y:  # 유튜브/Vimeo 는 서버가 접속하지 않으므로 비회원도 가능
         return jsonify(embed="youtube", id=y.group(1))
     v = VIMEO_RE.match(url)
     if v:
         return jsonify(embed="vimeo", id=v.group(1))
+    if g.user is None:
+        return jsonify(error="외부 콘텐츠 카드는 회원만 만들 수 있어요."), 401
     since = utcnow() - timedelta(hours=1)
     if LinkPreview.query.filter(LinkPreview.user_id == g.user.id, LinkPreview.created_at >= since).count() >= PREVIEWS_PER_HOUR:
         return jsonify(error="잠시 후 다시 시도해주세요."), 429

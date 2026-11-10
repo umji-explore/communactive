@@ -18,7 +18,7 @@
     </h2>
     <div class="post-meta">
       {{ avatar(post.author, 26) }}
-      <span class="author">{{ post.author.nickname }}</span>
+      <span class="author">{{ name_tag(post, community) }}</span>
       <span>{{ post.created_at|full_time }}{% if post.updated_at %} <em class="edited" title="{{ post.updated_at|full_time }} 수정">(수정됨)</em>{% endif %}</span>
       <span class="sep">조회 {{ post.views|comma }}</span>
       <span>추천 {{ post.upvotes }}</span>
@@ -104,24 +104,47 @@
     {% endfor %}
   </div>
 
-  {% if can_edit or can_delete or is_manager %}
   <div class="post-actions">
     {% if is_manager %}
     <form method="post" action="{{ url_for('board.toggle_notice', slug=community.slug, post_id=post.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-light btn-sm">{{ '공지 해제' if post.is_notice else '공지 등록' }}</button>
     </form>
+    {% elif is_sub %}
+    {# 부관리자: 커뮤니티 관리자에게 승인 요청 #}
+    <form method="post" action="{{ url_for('board.request_action', slug=community.slug, post_id=post.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="notice">
+      <button class="btn btn-light btn-sm">{{ '공지 해제 요청' if post.is_notice else '공지 등록 요청' }}</button>
+    </form>
+    {% if not can_delete %}
+    <form method="post" action="{{ url_for('board.request_action', slug=community.slug, post_id=post.id) }}" data-confirm="커뮤니티 관리자에게 이 글의 삭제를 요청할까요?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="delete_post">
+      <button class="btn btn-light btn-sm">삭제 요청</button>
+    </form>
+    {% endif %}
     {% endif %}
     {% if can_edit %}<a class="btn btn-light btn-sm" href="{{ url_for('board.edit', slug=community.slug, post_id=post.id) }}">수정</a>{% endif %}
-    {% if can_delete %}
+    {% if can_delete and g.user %}
     <form method="post" action="{{ url_for('board.delete_post', slug=community.slug, post_id=post.id) }}"
           data-confirm="글을 삭제할까요?{% if post.points_awarded %} 글쓴이가 받은 {{ post.points_awarded }}P가 회수됩니다.{% endif %}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-light btn-sm">삭제</button>
     </form>
+    {% elif post.user_id is none and not can_edit %}
+    {# 익명 글: 비밀번호로 수정/삭제 #}
+    <details class="anon-actions">
+      <summary class="btn btn-light btn-sm">수정 · 삭제</summary>
+      <form method="post" action="{{ url_for('board.anon_check', slug=community.slug, post_id=post.id) }}" class="row">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="password" name="anon_password" placeholder="글 비밀번호" required autocomplete="off" aria-label="글 비밀번호">
+        <button class="btn btn-light btn-sm" name="then" value="edit">수정</button>
+        <button class="btn btn-light btn-sm" name="then" value="delete" onclick="return confirm('글을 삭제할까요?')">삭제</button>
+      </form>
+    </details>
     {% endif %}
   </div>
-  {% endif %}
 </article>
 
 <section class="card comments" id="comments">
@@ -131,16 +154,35 @@
     <li id="c{{ c.id }}" class="{{ 'by-op' if c.user_id == post.user_id }}">
       <div class="c-head">
         {{ avatar(c.author, 22) }}
-        <span class="author">{{ c.author.nickname }}</span>
-        {% if c.user_id == post.user_id %}<span class="op">글쓴이</span>{% endif %}
+        <span class="author">{{ name_tag(c, community) }}</span>
+        {% if c.user_id and c.user_id == post.user_id %}<span class="op">글쓴이</span>{% endif %}
         <span class="time">{{ c.created_at|full_time }}</span>
+        <span class="c-actions">
         {% if g.user and (g.user.id == c.user_id or g.user.is_admin or is_manager) %}
         <form method="post" action="{{ url_for('board.delete_comment', comment_id=c.id) }}" class="inline"
               data-confirm="댓글을 삭제할까요?{% if c.points_awarded %} 받은 {{ c.points_awarded }}P가 회수됩니다.{% endif %}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="link-btn">삭제</button>
         </form>
+        {% else %}
+          {% if is_sub %}
+          <form method="post" action="{{ url_for('board.request_comment_delete', comment_id=c.id) }}" class="inline" data-confirm="이 댓글의 삭제를 요청할까요?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link-btn">삭제 요청</button>
+          </form>
+          {% endif %}
+          {% if c.user_id is none %}
+          <details class="anon-del">
+            <summary class="link-btn">삭제</summary>
+            <form method="post" action="{{ url_for('board.delete_comment', comment_id=c.id) }}" class="row">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="password" name="anon_password" placeholder="비밀번호" required autocomplete="off" aria-label="댓글 비밀번호">
+              <button class="btn btn-light btn-sm">삭제</button>
+            </form>
+          </details>
+          {% endif %}
         {% endif %}
+        </span>
       </div>
       {% if c.con_item %}<img class="con-in-comment" src="{{ c.con_item.path|con_url }}" alt="커뮤콘">{% endif %}
       {% if c.content %}<div class="c-body">{{ c.content|nl2br }}</div>{% endif %}
@@ -187,7 +229,19 @@
     </div>
   </form>
   {% else %}
-  <p class="empty"><a href="{{ url_for('auth.login', next=request.path) }}">로그인</a>하고 댓글을 남겨보세요.</p>
+  {# 비회원(익명) 댓글 #}
+  <form method="post" action="{{ url_for('board.comment', slug=community.slug, post_id=post.id) }}" class="comment-form anon-form" id="comment-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="anon-fields">
+      <input name="anon_name" maxlength="12" placeholder="닉네임 (ㅇㅇ)" aria-label="닉네임">
+      <input type="password" name="anon_password" minlength="4" maxlength="30" required placeholder="비밀번호 (삭제할 때 필요)" autocomplete="new-password" aria-label="비밀번호">
+    </div>
+    <textarea name="content" rows="3" maxlength="1000" required placeholder="댓글을 입력하세요. 로그인하면 포인트(+{{ POINTS_COMMENT }}P)를 받아요."></textarea>
+    <div class="anon-bottom">
+      {% include "_captcha.html" %}
+      <div class="form-actions"><a class="btn btn-light" href="{{ url_for('auth.login', next=request.path) }}">로그인</a><button class="btn">등록</button></div>
+    </div>
+  </form>
   {% endif %}
 </section>
 {% endblock %}

@@ -19,6 +19,7 @@ def hot_communities(limit=10):
     return (
         db.session.query(Community, recent.label("recent"), db.func.count(Post.id).label("total"))
         .outerjoin(Post, Post.community_id == Community.id)
+        .filter(Community.status == "approved")
         .group_by(Community.id)
         .order_by(recent.desc(), db.func.count(Post.id).desc(), Community.id)
         .limit(limit)

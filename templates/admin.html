@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import communi_icon %}
+{% block title %}사이트 관리 - {% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <h1 class="card-title">사이트 관리 <span class="admin-badge">관리자</span></h1>
+    <span class="muted small">회원 {{ stats.users|comma }}명 · 글 {{ stats.posts|comma }}개</span>
+  </div>
+  <p class="small muted">이 페이지와 관리자 계정의 활동은 다른 회원에게 보이지 않아요. 관리자 로그인은 8시간이 지나거나 브라우저를 닫으면 끝나요.</p>
+</section>
+
+<section class="card" id="pending">
+  <h2 class="card-title">개설 승인 대기 <span class="cmt">{{ pending|length }}</span></h2>
+  <ul class="req-list">
+    {% for c in pending %}
+    <li>
+      <div class="req-info">
+        <strong class="cl-name">{{ communi_icon(c, 24) }}<span>{{ c.name }}</span> <span class="muted small">/c/{{ c.slug }}</span></strong>
+        <span class="small">{{ c.description or '소개 없음' }}</span>
+        <span class="muted small">신청: {{ name_tag(c.creator, c) if c.creator else '알 수 없음' }} · {{ c.created_at|full_time }}</span>
+        <a class="u small" href="{{ url_for('board.communi', slug=c.slug) }}" target="_blank">미리 보기</a>
+      </div>
+      <form method="post" action="{{ url_for('admin.decide_community', cid=c.id) }}" class="row">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm" name="decision" value="approve">승인</button>
+        <button class="btn btn-light btn-sm" name="decision" value="reject" onclick="return confirm('개설을 거절할까요? 신청한 커뮤니티는 지워져요.')">거절</button>
+      </form>
+    </li>
+    {% else %}
+    <li class="muted small">승인을 기다리는 커뮤니티가 없어요.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2 class="card-title">커뮤니티</h2>
+  <p class="small muted">관리 화면 맨 아래 '커뮤니티 삭제'에서 지울 수 있어요. 모든 글·댓글은 글 화면에서 바로 삭제할 수 있어요.</p>
+  <ul class="req-list">
+    {% for c, n in communities %}
+    <li>
+      <div class="req-info"><strong class="cl-name">{{ communi_icon(c, 22) }}<span>{{ c.name }}</span></strong>
+        <span class="muted small">글 {{ n|comma }} · 관리자 {{ c.creator.nickname if c.creator else '-' }}</span></div>
+      <div class="row">
+        <a class="btn btn-light btn-sm" href="{{ url_for('board.communi', slug=c.slug) }}">보기</a>
+        <a class="btn btn-light btn-sm" href="{{ url_for('board.manage', slug=c.slug) }}#danger">관리 · 삭제</a>
+      </div>
+    </li>
+    {% else %}
+    <li class="muted small">커뮤니티가 없어요.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2 class="card-title">커뮤콘</h2>
+  <ul class="req-list">
+    {% for p in cons %}
+    <li>
+      <div class="req-info"><strong>{{ p.name }}</strong><span class="muted small">{{ p.creator.nickname }} · 판매 {{ p.sales_count }} · {{ p.price|comma }}P</span></div>
+      <div class="row">
+        <a class="btn btn-light btn-sm" href="{{ url_for('cons.detail', pack_id=p.id) }}">보기</a>
+        <form method="post" action="{{ url_for('cons.delete', pack_id=p.id) }}" data-confirm="'{{ p.name }}' 커뮤콘을 삭제할까요? 가진 사람들에게서도 사라져요.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-danger btn-sm">삭제</button>
+        </form>
+      </div>
+    </li>
+    {% else %}
+    <li class="muted small">커뮤콘이 없어요.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

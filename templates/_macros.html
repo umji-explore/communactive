@@ -17,8 +17,8 @@
 {% endmacro %}
 
 {% macro avatar(user, size=32) %}
-{% if user.avatar %}<img class="avatar" src="{{ user.avatar|con_url }}" width="{{ size }}" height="{{ size }}" alt="">
-{% else %}<span class="avatar avatar-empty" style="width:{{ size }}px;height:{{ size }}px;font-size:{{ (size * 0.45)|int }}px" aria-hidden="true">{{ user.nickname[:1] }}</span>{% endif %}
+{% if user and user.avatar and not user.is_admin %}<img class="avatar" src="{{ user.avatar|con_url }}" width="{{ size }}" height="{{ size }}" alt="">
+{% else %}<span class="avatar avatar-empty {{ 'avatar-anon' if not user }} {{ 'avatar-admin' if user and user.is_admin }}" style="width:{{ size }}px;height:{{ size }}px;font-size:{{ (size * 0.45)|int }}px" aria-hidden="true">{{ (user|public_name)[:1] if user else '익' }}</span>{% endif %}
 {% endmacro %}
 
 {% macro communi_icon(c, size=24) %}
@@ -41,9 +41,9 @@
     {% if p.has_poll %}<span class="ico ico-poll" title="투표"></span>{% endif %}
     {% if p.series_id %}<span class="ico ico-series" title="시리즈"></span>{% endif %}
     {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
-    <div class="mobile-meta">{{ p.author.nickname }} · {{ p.created_at|short_time }} · 조회 {{ p.views }} · 추천 {{ p.upvotes }}</div>
+    <div class="mobile-meta">{{ name_tag(p, p.community) }} · {{ p.created_at|short_time }} · 조회 {{ p.views }} · 추천 {{ p.upvotes }}</div>
   </td>
-  <td class="col-author">{{ p.author.nickname }}</td>
+  <td class="col-author">{{ name_tag(p, p.community) }}</td>
   <td class="col-date">{{ p.created_at|short_time }}</td>
   <td class="col-num">{{ p.views }}</td>
   <td class="col-num">{{ p.upvotes }}</td>
@@ -91,6 +91,6 @@
 <a class="con-card" href="{{ url_for('cons.detail', pack_id=pack.id) }}">
   {% if pack.thumbnail %}<img src="{{ pack.thumbnail.path|con_url }}" alt="" loading="lazy">{% endif %}
   <div class="con-name">{{ pack.name }}</div>
-  <div class="con-meta">{{ pack.creator.nickname }} · {% if pack.price %}{{ pack.price|comma }}P{% else %}무료{% endif %}</div>
+  <div class="con-meta">{{ pack.creator|public_name }} · {% if pack.price %}{{ pack.price|comma }}P{% else %}무료{% endif %}</div>
 </a>
 {% endmacro %}

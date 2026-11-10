@@ -6,7 +6,7 @@
     {% if pack.thumbnail %}<img class="con-main" src="{{ pack.thumbnail.path|con_url }}" alt="">{% endif %}
     <div class="con-info">
       <h1>{{ pack.name }}</h1>
-      <p class="muted">제작 {{ pack.creator.nickname }} · 콘 {{ pack.items|length }}개 · 판매 {{ pack.sales_count|comma }}</p>
+      <p class="muted">제작 {{ pack.creator|public_name }} · 콘 {{ pack.items|length }}개 · 판매 {{ pack.sales_count|comma }}</p>
       {% if pack.description %}<p>{{ pack.description }}</p>{% endif %}
       <div class="price">{% if pack.price %}{{ pack.price|comma }}P{% else %}무료{% endif %}</div>
       {% if owned %}

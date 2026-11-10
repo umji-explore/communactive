@@ -180,10 +180,11 @@ function init() {
   }));
 
   // 붙여넣기: 사진은 업로드, 글자는 서식 없이
+  const members = editor.dataset.members === "1";  // 비회원은 사진·동영상 업로드 불가
   editor.addEventListener("paste", (e) => {
     const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/"));
     e.preventDefault();
-    if (files.length) { uploadImages(files); return; }
+    if (files.length) { if (members) uploadImages(files); else alert("사진은 회원만 올릴 수 있어요."); return; }
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);
   });
@@ -192,6 +193,7 @@ function init() {
     const files = [...(e.dataTransfer?.files || [])];
     if (!files.length) return;
     e.preventDefault();
+    if (!members) { alert("사진·동영상은 회원만 올릴 수 있어요."); return; }
     const pos = document.caretRangeFromPoint?.(e.clientX, e.clientY);
     if (pos) savedRange = pos;
     uploadImages(files.filter((f) => f.type.startsWith("image/")));
@@ -242,13 +244,14 @@ function init() {
   const seriesId = document.getElementById("series-id");
   const chip = document.getElementById("series-chip");
   const chipTitle = document.getElementById("series-chip-title");
+  const seriesList = document.getElementById("series-list");
   function pickSeries(radio) {
     seriesId.value = radio.value;
     chip.hidden = !radio.value;
     chipTitle.textContent = radio.dataset.title || "";
   }
-  document.getElementById("series-list").addEventListener("change", (e) => { if (e.target.name === "_series") pickSeries(e.target); });
-  document.getElementById("create-series").addEventListener("click", async () => {
+  if (seriesList) seriesList.addEventListener("change", (e) => { if (e.target.name === "_series") pickSeries(e.target); });
+  document.getElementById("create-series")?.addEventListener("click", async () => {
     const inp = document.getElementById("new-series");
     const title = inp.value.trim();
     if (!title) return inp.focus();
@@ -264,24 +267,6 @@ function init() {
       pickSeries(label.firstChild);
       inp.value = "";
     } catch (e) { alert(e.message); }
-  });
-
-  // ---------- AI 이미지 ----------
-  const aiBtn = document.getElementById("ai-go");
-  aiBtn.addEventListener("click", async () => {
-    const prompt = document.getElementById("ai-prompt").value.trim();
-    if (prompt.length < 2) return alert("어떤 그림을 원하는지 적어주세요.");
-    aiBtn.disabled = true;
-    aiBtn.textContent = "만드는 중… (최대 1분)";
-    try {
-      const r = await post("/ai-image", { prompt });
-      insertFigure("image", r.id, `<img src="${esc(r.url)}" alt=""><figcaption>AI 생성 이미지</figcaption>`);
-      document.getElementById("ai-prompt").value = "";
-      closePanels();
-      if (r.cost) setStatus(`AI 이미지를 넣었어요 (-${r.cost}P)`);
-    } catch (e) { alert(e.message); }
-    aiBtn.disabled = false;
-    aiBtn.textContent = "이미지 만들기";
   });
 
   // ---------- 글자 수 · 저장 ----------

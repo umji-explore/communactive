@@ -37,7 +37,7 @@
       {% if g.user %}
         <div class="lb-user">
           {{ avatar(g.user, 44) }}
-          <div><strong>{{ g.user.nickname }}</strong>님</div>
+          <div><strong>{{ name_tag(g.user) }}</strong>님</div>
           <span class="lb-points">{{ g.user.points|comma }}P</span>
         </div>
         <div class="lb-links">

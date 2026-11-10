@@ -5,6 +5,10 @@
 {% block content %}
 {% set slim = False %}
 {% include "_communi_head.html" %}
+{% if not community.approved %}
+<div class="flash flash-info">이 커뮤니티는 <strong>사이트 관리자의 승인을 기다리고 있어요.</strong> 승인되면 모두에게 공개되고 글을 쓸 수 있어요.
+  지금은 만든 사람과 사이트 관리자만 볼 수 있어요.</div>
+{% endif %}
 
 {% include "_popular.html" %}
 

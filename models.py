@@ -26,6 +26,7 @@ class User(db.Model):
     # 로그인 실패 잠금 (비밀번호 무작위 대입 방지)
     failed_logins = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime)
+    post_count = db.Column(db.Integer, default=0, nullable=False)  # 장로 회원(글 500개 이상) 판정용
 
     def owns_pack(self, pack_id):
         return UserConPack.query.filter_by(user_id=self.id, pack_id=pack_id).first() is not None
@@ -42,28 +43,54 @@ class Community(db.Model):
     icon = db.Column(db.String(500))        # 아이콘 이미지 (Blob URL 또는 static 경로)
     banner = db.Column(db.String(500))      # 상단 배너 이미지
     categories = db.Column(db.String(300), default="")  # 말머리 목록 (줄바꿈 구분)
+    status = db.Column(db.String(10), default="pending", nullable=False)  # pending(승인 대기) / approved
 
     creator = db.relationship("User")
     posts = db.relationship("Post", back_populates="community", lazy="dynamic", cascade="all, delete-orphan")
 
     boards = db.relationship("Board", backref="community", cascade="all, delete-orphan",
                              order_by="Board.sort_order, Board.id", lazy="selectin")
+    staff = db.relationship("CommunityStaff", backref="community", cascade="all, delete-orphan", lazy="selectin")
+    requests = db.relationship("ModRequest", backref="community", cascade="all, delete-orphan", lazy="dynamic")
 
     @property
     def category_list(self):
         return [c for c in (self.categories or "").split("\n") if c]
 
     def writable_boards(self, user):
-        return [b for b in self.boards if not b.manager_only or self.is_manager(user)]
+        return [b for b in self.boards if not b.manager_only or self.is_staff(user)]
 
     def is_manager(self, user):
+        """커뮤니티 관리자 (만든 사람) 또는 사이트 관리자"""
         return user is not None and (user.id == self.creator_id or user.is_admin)
+
+    def is_sub(self, user):
+        """부관리자 (관리 작업은 커뮤니티 관리자의 승인 필요)"""
+        return user is not None and any(s.user_id == user.id for s in self.staff)
+
+    def is_staff(self, user):
+        return self.is_manager(user) or self.is_sub(user)
+
+    @property
+    def sub_ids(self):
+        return {s.user_id for s in self.staff}
+
+    @property
+    def approved(self):
+        return self.status == "approved"
+
+    def visible_to(self, user):
+        """승인 전 커뮤니티는 만든 사람과 사이트 관리자만 볼 수 있다"""
+        return self.approved or self.is_manager(user)
 
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), index=True)  # NULL 이면 익명 글
+    anon_name = db.Column(db.String(20))       # 익명 닉네임 (기본 ㅇㅇ)
+    anon_pw_hash = db.Column(db.String(255))   # 익명 글 수정/삭제 비밀번호 (해시)
+    anon_ip = db.Column(db.String(64))         # 익명 작성 IP (앞 두 자리만 보여줌)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     views = db.Column(db.Integer, default=0, nullable=False)
@@ -101,7 +128,10 @@ class Post(db.Model):
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), index=True)  # NULL 이면 익명 댓글
+    anon_name = db.Column(db.String(20))
+    anon_pw_hash = db.Column(db.String(255))
+    anon_ip = db.Column(db.String(64))
     content = db.Column(db.Text, default="")
     con_item_id = db.Column(db.Integer, db.ForeignKey("con_item.id"))
     points_awarded = db.Column(db.Integer, default=0, nullable=False)
@@ -158,6 +188,35 @@ class UserConPack(db.Model):
     pack = db.relationship("ConPack", lazy="joined")
 
     __table_args__ = (db.UniqueConstraint("user_id", "pack_id", name="uq_user_pack"),)
+
+
+class CommunityStaff(db.Model):
+    """커뮤니티 부관리자"""
+    id = db.Column(db.Integer, primary_key=True)
+    community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    user = db.relationship("User", lazy="joined")
+
+    __table_args__ = (db.UniqueConstraint("community_id", "user_id", name="uq_staff"),)
+
+
+class ModRequest(db.Model):
+    """부관리자의 관리 요청 → 커뮤니티 관리자가 승인/거절"""
+    id = db.Column(db.Integer, primary_key=True)
+    community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
+    requester_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    action = db.Column(db.String(20), nullable=False)  # settings / delete_post / delete_comment / notice
+    target_id = db.Column(db.Integer)
+    summary = db.Column(db.String(200), default="")
+    payload = db.Column(db.Text)  # settings 변경 내용 (JSON)
+    status = db.Column(db.String(10), default="pending", nullable=False, index=True)  # pending/approved/rejected
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    decided_at = db.Column(db.DateTime)
+    decided_by = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    requester = db.relationship("User", foreign_keys=[requester_id], lazy="joined")
 
 
 class Board(db.Model):

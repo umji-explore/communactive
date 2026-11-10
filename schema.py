@@ -20,6 +20,15 @@ NEW_COLUMNS = [
     ("post", "series_id", "INTEGER", "INTEGER"),
     ("post", "fmt", "VARCHAR(10) NOT NULL DEFAULT 'text'", "VARCHAR(10) NOT NULL DEFAULT 'text'"),
     ("post", "text", "TEXT", "TEXT"),
+    ("post", "anon_name", "VARCHAR(20)", "VARCHAR(20)"),
+    ("post", "anon_pw_hash", "VARCHAR(255)", "VARCHAR(255)"),
+    ("post", "anon_ip", "VARCHAR(64)", "VARCHAR(64)"),
+    ("comment", "anon_name", "VARCHAR(20)", "VARCHAR(20)"),
+    ("comment", "anon_pw_hash", "VARCHAR(255)", "VARCHAR(255)"),
+    ("comment", "anon_ip", "VARCHAR(64)", "VARCHAR(64)"),
+    ("user", "post_count", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"),
+    # 이미 있던 커뮤니티는 승인된 것으로 (새로 만드는 커뮤니티만 승인 대기)
+    ("community", "status", "VARCHAR(10) NOT NULL DEFAULT 'approved'", "VARCHAR(10) NOT NULL DEFAULT 'approved'"),
 ]
 
 
@@ -30,6 +39,7 @@ def upgrade(db):
     tables = set(insp.get_table_names())
     pg = engine.dialect.name == "postgresql"
     with engine.begin() as conn:
+        added = set()
         for table, col, pg_type, lite_type in NEW_COLUMNS:
             if table not in tables:
                 continue
@@ -40,6 +50,17 @@ def upgrade(db):
                 conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS {col} {pg_type}'))
             else:
                 conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col} {lite_type}'))
+            added.add((table, col))
+
+        # 익명 글/댓글: 글쓴이(user_id)가 비어 있어도 되게 (Postgres 만. SQLite 는 새로 만든 DB 에서만 가능)
+        if pg:
+            for table in ("post", "comment"):
+                if table in tables:
+                    conn.execute(text(f'ALTER TABLE "{table}" ALTER COLUMN user_id DROP NOT NULL'))
+
+        # 회원별 글 수 채우기 (장로 회원 판정용) — 컬럼을 처음 만들었을 때 한 번
+        if ("user", "post_count") in added:
+            conn.execute(text('UPDATE "user" SET post_count = (SELECT COUNT(*) FROM post WHERE post.user_id = "user".id)'))
 
         # 예전 글: 검색용 글자 채우기 (예전 글은 본문이 곧 글자)
         conn.execute(text("UPDATE post SET text = content WHERE text IS NULL AND fmt = 'text'"))

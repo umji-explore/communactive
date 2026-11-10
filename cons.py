@@ -2,7 +2,7 @@
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 from sqlalchemy.exc import IntegrityError
 
-from models import ConItem, ConPack, UserConPack, db
+from models import Comment, ConItem, ConPack, UserConPack, db
 from uploads import owned_upload
 from utils import login_required, spend_points
 
@@ -49,6 +49,24 @@ def buy(pack_id):
         db.session.rollback()
         flash("이미 보유한 커뮤콘입니다.", "info")
     return redirect(url_for("cons.detail", pack_id=pack.id))
+
+
+@bp.route("/<int:pack_id>/delete", methods=["POST"])
+@login_required
+def delete(pack_id):
+    """사이트 관리자만: 커뮤콘 삭제 (보유 목록에서도 빠지고, 댓글에 쓴 콘은 안 보이게 됨)"""
+    if not g.user.is_admin:
+        abort(404)
+    pack = db.session.get(ConPack, pack_id) or abort(404)
+    item_ids = [i.id for i in pack.items]
+    if item_ids:
+        Comment.query.filter(Comment.con_item_id.in_(item_ids)).update({"con_item_id": None}, synchronize_session=False)
+    UserConPack.query.filter_by(pack_id=pack.id).delete()
+    name = pack.name
+    db.session.delete(pack)
+    db.session.commit()
+    flash(f"'{name}' 커뮤콘을 삭제했어요.", "info")
+    return redirect(request.referrer if request.referrer and "/admin" in request.referrer else url_for("cons.shop"))
 
 
 @bp.route("/new", methods=["GET", "POST"])

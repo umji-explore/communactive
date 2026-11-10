@@ -2,8 +2,36 @@
 {% from "_macros.html" import communi_icon %}
 {% block title %}커뮤니티 관리 - {{ community.name }} - {% endblock %}
 {% block content %}
+{% if is_manager and pending %}
+<section class="card narrow wide" id="requests">
+  <h2 class="card-title">승인 대기 <span class="cmt">{{ pending|length }}</span></h2>
+  <ul class="req-list">
+    {% for r in pending %}
+    <li>
+      <div class="req-info">
+        <strong>{{ r.summary }}</strong>
+        <span class="muted small">{{ name_tag(r.requester, community) }} · {{ r.created_at|short_time }}</span>
+        {% if r.action == 'settings' %}<span class="muted small">승인하면 요청한 소개·게시판·아이콘·배너로 바뀌어요.</span>{% endif %}
+        {% if r.action in ('delete_post', 'notice') and r.target_id %}
+          <a class="u small" href="{{ url_for('board.post', slug=community.slug, post_id=r.target_id) }}" target="_blank">글 보기</a>
+        {% endif %}
+      </div>
+      <form method="post" action="{{ url_for('board.decide_request', slug=community.slug, req_id=r.id) }}" class="row">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm" name="decision" value="approve">승인</button>
+        <button class="btn btn-light btn-sm" name="decision" value="reject">거절</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 <section class="card narrow wide">
   <h1 class="card-title">{{ community.name }} 커뮤니티 관리</h1>
+  {% if not is_manager %}
+  <div class="flash flash-info">부관리자는 설정을 바꿀 때 <strong>커뮤니티 관리자의 승인</strong>이 필요해요. 저장하면 승인 요청이 보내져요.</div>
+  {% endif %}
   <form method="post" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -86,6 +114,54 @@
     </div>
   </form>
 </section>
+
+{% if is_manager %}
+<section class="card narrow wide" id="staff">
+  <h2 class="card-title">부관리자</h2>
+  <p class="small muted">부관리자는 닉네임이 <span class="nick rank-sub">동색</span>으로 보이고, 설정 변경·글 삭제·공지를 <strong>요청</strong>할 수 있어요. 요청은 위 '승인 대기'에서 승인해야 반영돼요.</p>
+  <ul class="staff-list">
+    {% for s in community.staff %}
+    <li>
+      {{ name_tag(s.user, community) }}
+      <form method="post" action="{{ url_for('board.staff', slug=community.slug) }}" class="inline" data-confirm="{{ s.user.nickname }} 님의 부관리자를 해제할까요?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="link-btn" name="remove" value="{{ s.user_id }}">해제</button>
+      </form>
+    </li>
+    {% else %}
+    <li class="muted small">아직 부관리자가 없어요.</li>
+    {% endfor %}
+  </ul>
+  <form method="post" action="{{ url_for('board.staff', slug=community.slug) }}" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="nickname" maxlength="12" placeholder="부관리자로 지정할 회원 닉네임" required aria-label="닉네임">
+    <button class="btn btn-light btn-sm">지정</button>
+  </form>
+</section>
+
+<details class="card narrow wide danger-zone" id="danger">
+  <summary>커뮤니티 삭제</summary>
+  <p class="small">커뮤니티와 그 안의 <strong>모든 게시판·글·댓글이 지워지고 되돌릴 수 없어요.</strong>
+    확인을 위해 커뮤니티 이름 <strong>{{ community.name }}</strong> 을(를) 입력하세요.</p>
+  <form method="post" action="{{ url_for('board.delete_community', slug=community.slug) }}" class="row" data-confirm="정말 '{{ community.name }}' 커뮤니티를 삭제할까요? 되돌릴 수 없습니다.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="confirm_name" placeholder="{{ community.name }}" required autocomplete="off" aria-label="커뮤니티 이름">
+    <button class="btn btn-danger btn-sm">삭제</button>
+  </form>
+</details>
+{% else %}
+<section class="card narrow wide">
+  <h2 class="card-title">내 요청</h2>
+  <ul class="req-list">
+    {% for r in my_requests %}
+    <li><div class="req-info"><strong>{{ r.summary }}</strong><span class="muted small">{{ r.created_at|short_time }}</span></div>
+      <span class="req-status st-{{ r.status }}">{{ {'pending': '대기 중', 'approved': '승인됨', 'rejected': '거절됨'}[r.status] }}</span></li>
+    {% else %}
+    <li class="muted small">보낸 요청이 없어요.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 <script>
 (() => {
   const rows = document.getElementById("board-rows");

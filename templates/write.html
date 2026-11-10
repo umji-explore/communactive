@@ -18,6 +18,17 @@
       <input name="title" value="{{ form.title }}" maxlength="100" required placeholder="제목을 입력해 주세요." aria-label="제목">
     </div>
 
+    {% if not g.user and not post %}
+    <div class="anon-write">
+      <div class="anon-fields">
+        <input name="anon_name" value="{{ form.anon_name }}" maxlength="12" placeholder="닉네임 (ㅇㅇ)" aria-label="닉네임">
+        <input type="password" name="anon_password" minlength="4" maxlength="30" required placeholder="비밀번호 (수정·삭제할 때 필요)" autocomplete="new-password" aria-label="비밀번호">
+      </div>
+      <p class="small muted">비회원으로 글을 써요. 닉네임은 회색으로, IP 앞자리와 함께 보여요.
+        <a class="u" href="{{ url_for('auth.login', next=request.path) }}">로그인</a>하면 포인트를 받고 사진·동영상·커뮤콘·투표도 쓸 수 있어요.</p>
+    </div>
+    {% endif %}
+
     <div class="editor-wrap">
       <div class="ed-toolbar" role="toolbar" aria-label="글쓰기 도구">
         <div class="ed-row">
@@ -44,16 +55,21 @@
           <button type="button" class="ed-btn icon" data-cmd="removeFormat" title="서식 지우기">⌫</button>
         </div>
         <div class="ed-row ed-insert">
+          {% if member_tools %}
           <label class="ed-btn" title="이미지 (여러 장 가능)"><span class="ico ico-img"></span>이미지
             <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple data-ed-upload="image" hidden></label>
           <label class="ed-btn" title="동영상 (최대 {{ video_max_mb }}MB)"><span class="ico ico-video"></span>동영상
             <input type="file" accept="video/mp4,video/webm,video/quicktime" data-ed-upload="video" hidden></label>
           <button type="button" class="ed-btn" data-panel="con"><span class="ico ico-con"></span>커뮤콘</button>
+          {% endif %}
           <button type="button" class="ed-btn" data-panel="youtube"><span class="ico ico-yt"></span>유튜브</button>
+          {% if member_tools %}
           <button type="button" class="ed-btn" data-panel="link"><span class="ico ico-link"></span>외부 콘텐츠</button>
           <button type="button" class="ed-btn" data-panel="series"><span class="ico ico-series"></span>시리즈</button>
           {% if not post %}<button type="button" class="ed-btn" data-open-poll><span class="ico ico-poll"></span>투표</button>{% endif %}
-          <button type="button" class="ed-btn" data-panel="ai"><span class="ico ico-ai"></span>AI 이미지</button>
+          {% else %}
+          <span class="tool-hint">사진·동영상·커뮤콘·외부 콘텐츠·시리즈·투표는 회원만 쓸 수 있어요</span>
+          {% endif %}
           <span class="upload-status" id="upload-status" aria-live="polite"></span>
         </div>
       </div>
@@ -73,6 +89,7 @@
           {% endfor %}
         </div>
       </div>
+      {% if member_tools %}
       <div class="ed-panel" data-panel-body="con" hidden>
         {% if my_packs %}
         <div class="con-tabs">
@@ -93,10 +110,12 @@
         <p class="empty">보유한 커뮤콘이 없어요. <a class="u" href="{{ url_for('cons.shop') }}" target="_blank">커뮤콘 상점</a>에서 구해보세요.</p>
         {% endif %}
       </div>
+      {% endif %}
       <div class="ed-panel" data-panel-body="youtube" hidden>
         <div class="row"><input type="url" placeholder="유튜브 또는 Vimeo 주소를 붙여넣으세요" data-embed-input="video">
           <button type="button" class="btn btn-sm" data-embed-go="video">넣기</button></div>
       </div>
+      {% if member_tools %}
       <div class="ed-panel" data-panel-body="link" hidden>
         <div class="row"><input type="url" placeholder="https:// 로 시작하는 웹페이지 주소 (제목·요약·대표 이미지를 카드로 보여줘요)" data-embed-input="link">
           <button type="button" class="btn btn-sm" data-embed-go="link">가져오기</button></div>
@@ -112,22 +131,20 @@
         <div class="row"><input maxlength="40" placeholder="새 시리즈 이름" id="new-series">
           <button type="button" class="btn btn-light btn-sm" id="create-series">만들기</button></div>
       </div>
-      <div class="ed-panel" data-panel-body="ai" hidden>
-        <p class="small muted">만들고 싶은 그림을 설명해 주세요. 한 장에 <strong>{{ ai_cost|comma }}P</strong>, 하루 {{ ai_daily }}장까지.
-          {% if g.user %}(보유 {{ g.user.points|comma }}P){% endif %}</p>
-        <textarea rows="3" maxlength="300" id="ai-prompt" placeholder="예: 창가에서 햇볕 쬐는 치즈 고양이, 수채화 느낌"></textarea>
-        <div class="right-row"><button type="button" class="btn btn-sm" id="ai-go">이미지 만들기</button></div>
-      </div>
-
-      <div id="editor" class="editor-body post-body" contenteditable="true" spellcheck="false"
-           data-placeholder="내용을 입력해 주세요. 사진은 붙여넣기(Ctrl+V)나 끌어다 놓기로도 넣을 수 있어요.">{{ form.html }}</div>
+      {% endif %}
+      <div id="editor" class="editor-body post-body" contenteditable="true" spellcheck="false" data-members="{{ '1' if member_tools else '' }}"
+           data-placeholder="{{ '내용을 입력해 주세요. 사진은 붙여넣기(Ctrl+V)나 끌어다 놓기로도 넣을 수 있어요.' if member_tools else '내용을 입력해 주세요.' }}">{{ form.html }}</div>
       <div class="ed-foot">
         <span class="series-chip" id="series-chip" {{ 'hidden' if not form.series_id }}>시리즈: <strong id="series-chip-title">{% for s in my_series if s.id == form.series_id %}{{ s.title }}{% endfor %}</strong></span>
         <span class="muted"><span id="char-count">0</span> / 20,000자</span>
       </div>
     </div>
 
-    {% if not post %}
+    {% if not g.user and not post %}
+    <div class="anon-captcha">{% include "_captcha.html" %}</div>
+    {% endif %}
+
+    {% if not post and member_tools %}
     {% set pf = poll_form %}
     <details class="poll-builder" id="poll-builder" {{ 'open' if pf and pf.get('poll_on') }}>
       <summary><span class="ico ico-poll"></span> 투표</summary>
@@ -159,11 +176,11 @@
     {% endif %}
 
     <div class="form-actions">
-      <span class="hint">{% if post %}수정해도 포인트는 그대로예요.{% else %}글을 등록하면 <strong>+{{ POINTS_POST }}P</strong>를 받아요. (삭제 시 회수){% endif %}</span>
+      <span class="hint">{% if post %}수정해도 포인트는 그대로예요.{% elif not g.user %}비회원 글은 포인트가 없어요.{% else %}글을 등록하면 <strong>+{{ POINTS_POST }}P</strong>를 받아요. (삭제 시 회수){% endif %}</span>
       <a class="btn btn-light" href="{{ url_for('board.post', slug=community.slug, post_id=post.id) if post else url_for('board.communi', slug=community.slug) }}">취소</a>
       <button class="btn">{{ '수정' if post else '등록' }}</button>
     </div>
   </form>
 </section>
-<script type="module" src="{{ url_for('static', filename='js/editor.js') }}?v=6"></script>
+<script type="module" src="{{ url_for('static', filename='js/editor.js') }}?v=7"></script>
 {% endblock %}
