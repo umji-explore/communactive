@@ -155,9 +155,17 @@ document.addEventListener("click", (e) => {
   if (!builder) return;
   const on = document.getElementById("poll-on");
   const box = document.getElementById("poll-options");
-  const sync = () => { on.value = builder.open ? "1" : ""; };
-  builder.addEventListener("toggle", sync);
-  sync();
+  // 도구 모음의 '투표' 버튼으로 열고, '투표 빼기'로 닫는다. 닫혀 있으면 투표 없이 등록된다.
+  document.querySelectorAll("[data-open-poll]").forEach((b) => b.addEventListener("click", () => {
+    builder.hidden = false;
+    on.value = "1";
+    builder.scrollIntoView({ behavior: "smooth", block: "center" });
+    builder.querySelector("input[name=poll_question]").focus({ preventScroll: true });
+  }));
+  document.getElementById("remove-poll").addEventListener("click", () => {
+    builder.hidden = true;
+    on.value = "";
+  });
   const renumber = () => box.querySelectorAll("input").forEach((inp, i) => { inp.placeholder = `항목 ${i + 1}`; });
   document.getElementById("add-option").addEventListener("click", () => {
     if (box.children.length >= 10) return alert("항목은 10개까지 넣을 수 있어요.");

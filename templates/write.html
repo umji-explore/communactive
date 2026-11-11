@@ -146,9 +146,11 @@
 
     {% if not post and member_tools %}
     {% set pf = poll_form %}
-    <details class="poll-builder" id="poll-builder" {{ 'open' if pf and pf.get('poll_on') }}>
-      <summary><span class="ico ico-poll"></span> 투표</summary>
-      <input type="hidden" name="poll_on" value="" id="poll-on">
+    {# 위 도구 모음의 '투표' 버튼을 눌렀을 때만 나타남 #}
+    <div class="poll-builder" id="poll-builder" {{ '' if pf and pf.get('poll_on') else 'hidden' }}>
+      <div class="poll-builder-head"><span><span class="ico ico-poll"></span> 투표</span>
+        <button type="button" class="link-btn" id="remove-poll">투표 빼기</button></div>
+      <input type="hidden" name="poll_on" value="{{ '1' if pf and pf.get('poll_on') else '' }}" id="poll-on">
       <div class="poll-fields">
         <input name="poll_question" maxlength="100" placeholder="투표 질문 (예: 점심 메뉴 뭐 먹지?)" value="{{ pf.get('poll_question', '') if pf else '' }}" aria-label="투표 질문">
         <div class="poll-options" id="poll-options">
@@ -170,7 +172,7 @@
           </label>
         </div>
       </div>
-    </details>
+    </div>
     {% elif post.poll %}
     <p class="muted small">이 글에는 투표가 있어요. 투표는 수정할 수 없어요.</p>
     {% endif %}
@@ -182,5 +184,5 @@
     </div>
   </form>
 </section>
-<script type="module" src="{{ url_for('static', filename='js/editor.js') }}?v=7"></script>
+<script type="module" src="{{ url_for('static', filename='js/editor.js') }}?v=9"></script>
 {% endblock %}

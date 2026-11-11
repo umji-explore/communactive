@@ -72,11 +72,6 @@ function init() {
     p.hidden = wasOpen;
     if (!p.hidden) { const inp = p.querySelector("input:not([type=radio]), textarea"); if (inp) inp.focus(); }
   }));
-  document.querySelectorAll("[data-open-poll]").forEach((b) => b.addEventListener("click", () => {
-    const d = document.getElementById("poll-builder");
-    d.open = true;
-    d.scrollIntoView({ behavior: "smooth", block: "center" });
-  }));
 
   // ---------- 블록(figure) 넣기 ----------
   function topBlock(node) {

@@ -479,8 +479,12 @@ input:focus, textarea:focus { outline: none; border-color: var(--sub); }
 .tray-item img { width: 100%; height: 100%; object-fit: cover; }
 .tray-item:hover { border-color: var(--sub); }
 .poll-builder { border: 1px solid var(--line); border-radius: var(--radius); }
-.poll-builder summary { cursor: pointer; padding: 10px 12px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
-.poll-builder[open] summary { border-bottom: 1px solid var(--line); }
+.poll-builder[hidden] { display: none; }
+.poll-builder-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--line);
+  font-weight: 600; font-size: 13px; }
+.poll-builder-head > span { display: flex; align-items: center; gap: 6px; }
+.poll-builder-head .ico { margin-left: 0; color: var(--sub); }
+.poll-builder-head .link-btn { font-size: 12px; }
 .poll-fields { padding: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .poll-fields > input { width: 100%; }
 .poll-options { display: flex; flex-direction: column; gap: 6px; width: 100%; }
