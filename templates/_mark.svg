@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 156 104" fill="currentColor" role="img" aria-label="communactive">
-  <g transform="translate(18 0) skewX(-12)">
-    <path d="M90 10 Q70 0 48 1 Q2 4 2 46 Q2 86 40 86 L134 86 L134 72 L42 72 Q18 72 18 46 Q18 17 49 15 Q66 14 82 24 Z"/>
-    <path d="M107 -2 L111 -2 L142 100 L126 100 L109 38 L92 100 L76 100 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -4 172 114" fill="currentColor" role="img" aria-label="communactive">
+  <g transform="translate(20 0) skewX(-14)">
+    <g fill="#6b6b6b" transform="translate(6 6)">
+      <path d="M96 8 Q74 -4 50 -2 Q-4 2 -4 46 Q-4 92 42 92 L140 92 L140 70 L46 70 Q22 70 22 46 Q22 22 52 20 Q68 19 84 30 Z"/>
+      <path d="M104 -4 L120 -4 L152 100 L128 100 L112 44 L96 100 L72 100 Z"/>
+    </g>
+    <path d="M96 8 Q74 -4 50 -2 Q-4 2 -4 46 Q-4 92 42 92 L140 92 L140 70 L46 70 Q22 70 22 46 Q22 22 52 20 Q68 19 84 30 Z"/>
+    <path d="M104 -4 L120 -4 L152 100 L128 100 L112 44 L96 100 L72 100 Z"/>
   </g>
 </svg>
