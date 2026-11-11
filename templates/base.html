@@ -44,7 +44,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   {# 로고 글자 전용 폰트: 로고에 쓰는 글자만 받아서 아주 가볍다 #}
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&text=communactive&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=16">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=17">
 </head>
 <body>
 {# 로고 옆 섹션 이름 (디시의 "dcinside | ○○ 갤러리" 처럼) #}
@@ -68,7 +68,7 @@
 <header class="topbar">
   <div class="wrap topbar-inner">
     <div class="brand">
-      <a class="wordmark" href="{{ url_for('main.home') }}" aria-label="communactive 홈"><span class="logo-mark" aria-hidden="true">{% include "_mark.svg" %}</span>commun<span>active</span></a>
+      <a class="wordmark" href="{{ url_for('main.home') }}" aria-label="communactive 홈">commun<span>active</span></a>
       {% if section %}
         <span class="brand-sep"></span>
         {% if section_url %}<a class="brand-section" href="{{ section_url }}">{{ section }}</a>
