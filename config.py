@@ -44,6 +44,11 @@ class Config:
     SESSION_COOKIE_SECURE = ON_VERCEL
     PREFERRED_URL_SCHEME = "https" if ON_VERCEL else "http"
 
+    # 검색엔진 (구글/네이버)
+    SITE_URL = os.environ.get("SITE_URL", "https://communactive.vercel.app").rstrip("/")
+    GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "")  # 구글 서치 콘솔 소유 확인 코드
+    NAVER_SITE_VERIFICATION = os.environ.get("NAVER_SITE_VERIFICATION", "")    # 네이버 서치어드바이저 소유 확인 코드
+
     # 업로드 (이미지): Vercel Blob 이 연결돼 있으면 Blob, 아니면 로컬 static/uploads
     # 사진은 한 장씩 따로 올린다 (Vercel 은 요청 하나당 4.5MB 제한)
     USE_BLOB = bool(os.environ.get("BLOB_READ_WRITE_TOKEN") or os.environ.get("BLOB_STORE_ID"))

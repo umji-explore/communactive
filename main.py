@@ -59,8 +59,55 @@ def favicon():
 
 @bp.route("/robots.txt")
 def robots():
-    body = "User-agent: *\nDisallow: /me\nDisallow: /login\nDisallow: /signup\nDisallow: /forgot\n"
-    return Response(body, mimetype="text/plain")
+    site = current_app.config["SITE_URL"]
+    body = "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /me", "Disallow: /login", "Disallow: /signup", "Disallow: /forgot", "Disallow: /welcome",
+        "Disallow: /admin/", "Disallow: /upload", "Disallow: /captcha.png", "Disallow: /search",
+        "Disallow: /c/*/write", "Disallow: /c/*/edit", "Disallow: /c/*/manage",
+        "",
+        f"Sitemap: {site}/sitemap.xml",
+        "",
+    ])
+    resp = Response(body, mimetype="text/plain")
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+
+@bp.route("/sitemap.xml")
+def sitemap():
+    """구글/네이버가 사이트의 페이지를 빠짐없이 찾도록 알려주는 목록"""
+    from xml.sax.saxutils import escape as xml_escape
+    site = current_app.config["SITE_URL"]
+
+    def day(dt):
+        return dt.strftime("%Y-%m-%d") if dt else None
+
+    urls = [(f"{site}/", day(utcnow()), "daily", "1.0"), (f"{site}/c", None, "daily", "0.8"),
+            (f"{site}/con/", None, "weekly", "0.5"), (f"{site}/terms", None, "yearly", "0.1"),
+            (f"{site}/privacy", None, "yearly", "0.1")]
+    latest = dict(db.session.query(Post.community_id, db.func.max(Post.created_at)).group_by(Post.community_id).all())
+    for c in Community.query.filter_by(status="approved").order_by(Community.id):
+        urls.append((f"{site}/c/{c.slug}", day(latest.get(c.id) or c.created_at), "hourly", "0.9"))
+    posts = (db.session.query(Post.id, Post.created_at, Post.updated_at, Community.slug)
+             .join(Community, Community.id == Post.community_id)
+             .filter(Community.status == "approved")
+             .order_by(Post.id.desc()).limit(5000).all())
+    for pid, created, updated, slug in posts:
+        urls.append((f"{site}/c/{slug}/{pid}", day(updated or created), None, "0.6"))
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, lastmod, freq, prio in urls:
+        lines.append("  <url><loc>" + xml_escape(loc) + "</loc>"
+                     + (f"<lastmod>{lastmod}</lastmod>" if lastmod else "")
+                     + (f"<changefreq>{freq}</changefreq>" if freq else "")
+                     + f"<priority>{prio}</priority></url>")
+    lines.append("</urlset>")
+    resp = Response("\n".join(lines), mimetype="application/xml")
+    resp.headers["Cache-Control"] = "public, max-age=1800"
+    return resp
 
 
 @bp.route("/me/avatar", methods=["POST"])

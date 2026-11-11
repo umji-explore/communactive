@@ -3,12 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}{% endblock %}communactive</title>
-  {% set page_title = self.title() ~ "communactive" %}
-  <meta name="description" content="{% block description %}communactive - 누구나 만드는 커뮤니티, 실시간·일간·주간 베스트, 직접 만드는 커뮤콘{% endblock %}">
+  {% set ep = request.endpoint or '' %}
+  {% set is_home = ep == 'main.home' %}
+  <title>{% if is_home %}communactive 커뮤넥티브 - 누구나 만드는 커뮤니티{% else %}{% block title %}{% endblock %}communactive 커뮤넥티브{% endif %}</title>
+  {% set page_title = "communactive 커뮤넥티브" if is_home else self.title() ~ "communactive 커뮤넥티브" %}
+  <meta name="description" content="{% block description %}커뮤넥티브(communactive) - 누구나 만드는 커뮤니티. 실시간·일간·주간 베스트, 익명 글쓰기, 직접 만드는 커뮤콘.{% endblock %}">
+  {# 검색에 나올 필요 없는 화면(로그인, 글쓰기, 관리, 검색 결과, 승인 전 커뮤니티 등)은 noindex #}
+  {% set noindex = ep in ('board.search', 'auth.login', 'auth.signup', 'auth.forgot', 'auth.welcome', 'main.mypage',
+                          'board.write', 'board.edit', 'board.manage', 'admin.index', 'cons.new')
+                   or code is defined or (community is defined and community and not community.approved) %}
+  {% if noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  {% set canonical = config.SITE_URL ~ (request.full_path.rstrip('?') if request.args.get('page') or request.args.get('board') else request.path) %}
+  {% if not noindex %}<link rel="canonical" href="{{ canonical }}">{% endif %}
+  {% if config.GOOGLE_SITE_VERIFICATION %}<meta name="google-site-verification" content="{{ config.GOOGLE_SITE_VERIFICATION }}">{% endif %}
+  {% if config.NAVER_SITE_VERIFICATION %}<meta name="naver-site-verification" content="{{ config.NAVER_SITE_VERIFICATION }}">{% endif %}
   <meta name="theme-color" content="#262626">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="communactive">
+  <meta property="og:site_name" content="커뮤넥티브 communactive">
+  <meta property="og:url" content="{{ canonical }}">
+  <meta property="og:locale" content="ko_KR">
+  {% if is_home %}
+  {# 구글이 사이트 이름을 '커뮤넥티브 / communactive' 로 알아보게 하는 구조화 데이터 #}
+  <script type="application/ld+json">
+  {"@context": "https://schema.org", "@type": "WebSite",
+   "name": "커뮤넥티브", "alternateName": ["communactive", "커뮤넥티브 communactive"],
+   "url": "{{ config.SITE_URL }}/",
+   "potentialAction": {"@type": "SearchAction", "target": "{{ config.SITE_URL }}/search?q={search_term_string}",
+                       "query-input": "required name=search_term_string"}}
+  </script>
+  {% endif %}
   <meta property="og:title" content="{{ page_title }}">
   <meta property="og:description" content="{{ self.description() }}">
   <meta property="og:image" content="{{ url_for('static', filename='img/og-image.png', _external=True) }}">
@@ -95,6 +118,7 @@
   <div class="wrap">
     <a href="{{ url_for('main.terms') }}">이용약관</a>
     <a href="{{ url_for('main.privacy') }}"><strong>개인정보처리방침</strong></a>
+    <span><strong>커뮤넥티브</strong> communactive · 누구나 만드는 커뮤니티</span>
     <span>Copyright © communactive. All rights reserved.</span>
   </div>
 </footer>
