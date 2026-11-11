@@ -48,6 +48,8 @@ class Config:
     SITE_URL = os.environ.get("SITE_URL", "https://communactive.vercel.app").rstrip("/")
     GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "")  # 구글 서치 콘솔 소유 확인 코드
     NAVER_SITE_VERIFICATION = os.environ.get("NAVER_SITE_VERIFICATION", "")    # 네이버 서치어드바이저 소유 확인 코드
+    # 검색엔진 소유 확인용 HTML 파일 이름 (확장자 .html 제외)
+    SITE_VERIFICATION_FILES = {"googlee3d321a70028486d"}
 
     # 업로드 (이미지): Vercel Blob 이 연결돼 있으면 Blob, 아니면 로컬 static/uploads
     # 사진은 한 장씩 따로 올린다 (Vercel 은 요청 하나당 4.5MB 제한)

@@ -57,6 +57,18 @@ def favicon():
                                max_age=86400)
 
 
+@bp.route("/<string:name>.html")
+def site_verification(name):
+    """검색엔진 소유 확인 파일 (구글: google로 시작하는 파일). 등록된 이름만 응답한다."""
+    if name not in current_app.config["SITE_VERIFICATION_FILES"]:
+        return render_template("error.html", code=404, message="페이지를 찾을 수 없습니다."), 404
+    if name.startswith("google"):
+        body = f"google-site-verification: {name}.html"
+    else:
+        body = name
+    return Response(body, mimetype="text/html")
+
+
 @bp.route("/robots.txt")
 def robots():
     site = current_app.config["SITE_URL"]
