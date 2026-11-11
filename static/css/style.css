@@ -752,8 +752,8 @@ a.nick:hover { text-decoration: underline; }
 
 /* ================= 로고 모노그램 ================= */
 .wordmark { display: inline-flex; align-items: center; }
-.logo-mark { display: inline-flex; width: 34px; margin-right: 9px; color: #fff; flex: 0 0 auto; }
+.logo-mark { display: inline-flex; width: 42px; margin-right: 9px; color: #fff; flex: 0 0 auto; }
 .logo-mark svg { width: 100%; height: auto; display: block; }
 .wordmark:hover .logo-mark { color: #fff; }
-@media (max-width: 640px) { .logo-mark { width: 28px; margin-right: 6px; } }
+@media (max-width: 640px) { .logo-mark { width: 34px; margin-right: 6px; } }
 .wordmark .logo-mark, .wordmark:hover .logo-mark { color: #fff; }
