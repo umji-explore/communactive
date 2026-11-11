@@ -52,6 +52,15 @@ class Community(db.Model):
                              order_by="Board.sort_order, Board.id", lazy="selectin")
     staff = db.relationship("CommunityStaff", backref="community", cascade="all, delete-orphan", lazy="selectin")
     requests = db.relationship("ModRequest", backref="community", cascade="all, delete-orphan", lazy="dynamic")
+    members = db.relationship("CommunityMember", cascade="all, delete-orphan", lazy="dynamic",
+                              overlaps="community")
+
+    @property
+    def member_count(self):
+        return self.members.count()
+
+    def has_member(self, user):
+        return user is not None and self.members.filter_by(user_id=user.id).first() is not None
 
     @property
     def category_list(self):
@@ -188,6 +197,18 @@ class UserConPack(db.Model):
     pack = db.relationship("ConPack", lazy="joined")
 
     __table_args__ = (db.UniqueConstraint("user_id", "pack_id", name="uq_user_pack"),)
+
+
+class CommunityMember(db.Model):
+    """커뮤니티 가입 회원"""
+    id = db.Column(db.Integer, primary_key=True)
+    community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+
+    community = db.relationship("Community", lazy="joined", overlaps="members")
+
+    __table_args__ = (db.UniqueConstraint("community_id", "user_id", name="uq_member"),)
 
 
 class CommunityStaff(db.Model):

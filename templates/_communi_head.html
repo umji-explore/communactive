@@ -6,9 +6,29 @@
     <div class="ch-text">
       <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니티</a></h1>
       {% if not slim and community.description %}<p>{{ community.description }}</p>{% endif %}
+      {% if not slim %}<p class="ch-count">회원 {{ community.member_count|comma }}명</p>{% endif %}
     </div>
   </div>
   <div class="ch-actions">
+    {% if community.approved %}
+      {% if not g.user %}
+        <a class="btn btn-light btn-sm join-btn" href="{{ url_for('auth.login', next=request.path) }}">+ 가입</a>
+      {% elif community.has_member(g.user) %}
+        {% if g.user.id != community.creator_id %}
+        <form method="post" action="{{ url_for('board.join', slug=community.slug) }}" class="inline" data-confirm="'{{ community.name }}' 커뮤니티에서 탈퇴할까요?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button class="btn btn-light btn-sm joined-btn" name="leave" value="1" title="누르면 탈퇴"><span class="j-on">가입됨 ✓</span><span class="j-off">탈퇴</span></button>
+        </form>
+        {% endif %}
+      {% else %}
+        <form method="post" action="{{ url_for('board.join', slug=community.slug) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button class="btn btn-light btn-sm join-btn">+ 가입</button>
+        </form>
+      {% endif %}
+    {% endif %}
     {% if community.is_manager(g.user) %}
       {% set n_pending = community.requests.filter_by(status='pending').count() %}
       <a class="btn btn-light btn-sm" href="{{ url_for('board.manage', slug=community.slug) }}">관리{% if n_pending %} <span class="pending-dot">{{ n_pending }}</span>{% endif %}</a>

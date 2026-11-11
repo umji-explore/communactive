@@ -12,12 +12,12 @@
     <button class="btn btn-light">검색</button>
   </form>
   <ul class="communi-list">
-    {% for c, cnt in rows %}
+    {% for c, cnt, mcnt in rows %}
     <li>
       <a href="{{ url_for('board.communi', slug=c.slug) }}">
         <strong class="cl-name">{{ communi_icon(c, 28) }}<span>{{ c.name }}</span></strong>
         <span class="desc">{{ c.description or "소개가 없습니다." }}</span>
-        <span class="count">글 {{ cnt|comma }}</span>
+        <span class="count">회원 {{ mcnt|comma }} · 글 {{ cnt|comma }}</span>
       </a>
     </li>
     {% else %}

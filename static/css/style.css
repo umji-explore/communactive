@@ -681,3 +681,14 @@ a.cat:hover { text-decoration: none; color: var(--text); }
 .danger-zone[open] summary { margin-bottom: 8px; }
 .pending-dot { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--point); color: #fff; font-size: 11px; line-height: 18px; }
 .avatar-admin { background: var(--gold); }
+
+/* ================= 커뮤니티 가입 ================= */
+.ch-count { margin-top: 2px !important; font-size: 12px !important; }
+.join-btn { font-weight: 700; }
+.joined-btn .j-off { display: none; }
+.joined-btn:hover .j-on { display: none; }
+.joined-btn:hover .j-off { display: inline; color: var(--point); }
+.lb-joined { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.lb-joined-title { font-size: 12px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
+.lb-joined .communi-chips a { font-size: 12px; padding: 2px 8px; }
+.lb-joined p { margin: 0; }

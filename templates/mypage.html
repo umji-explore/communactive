@@ -52,6 +52,17 @@
 </div>
 
 <section class="card">
+  <h2 class="card-title">가입한 커뮤니티 <span class="muted small">{{ joined|length }}</span></h2>
+  {% if joined %}
+  <ul class="communi-chips">
+    {% for c in joined %}<li><a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }}</a></li>{% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">아직 가입한 커뮤니티가 없어요.</p>
+  {% endif %}
+</section>
+
+<section class="card">
   <div class="card-head">
     <h2 class="card-title">내 커뮤콘</h2>
     <a class="more" href="{{ url_for('cons.new') }}">커뮤콘 만들기 ›</a>

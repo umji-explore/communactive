@@ -12,7 +12,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 import captcha
 import content as content_mod
-from models import (Board, Comment, Community, CommunityStaff, ConItem, ModRequest, Poll, PollOption, PollVote, Post,
+from models import (Board, Comment, Community, CommunityMember, CommunityStaff, ConItem, ModRequest, Poll, PollOption, PollVote, Post,
                     Series, User, UserConPack, Vote, db, utcnow)
 from uploads import owned_upload
 from utils import (add_points, community_popular, cooldown_left, image_token_ids, login_required, popular_filter,
@@ -267,8 +267,10 @@ def execute_request(community, req):
 @bp.route("/c")
 def communi_list():
     q = request.args.get("q", "").strip()
+    members = (db.select(db.func.count(CommunityMember.id))
+               .where(CommunityMember.community_id == Community.id).scalar_subquery())
     rows = (
-        db.session.query(Community, db.func.count(Post.id))
+        db.session.query(Community, db.func.count(Post.id), members)
         .outerjoin(Post, Post.community_id == Community.id)
         .filter(Community.status == "approved")
         .group_by(Community.id)
@@ -306,6 +308,8 @@ def communi_new():
         if not error:
             c = Community(creator_id=g.user.id, status="approved" if g.user.is_admin else "pending", **form)
             db.session.add(c)
+            db.session.flush()
+            db.session.add(CommunityMember(community_id=c.id, user_id=g.user.id))  # 만든 사람은 자동 가입
             try:
                 db.session.commit()
             except IntegrityError:
@@ -320,6 +324,31 @@ def communi_new():
                 return redirect(url_for("board.communi", slug=c.slug))
         flash(error, "error")
     return render_template("communi_new.html", form=form)
+
+
+@bp.route("/c/<slug>/join", methods=["POST"])
+@login_required
+def join(slug):
+    community = get_community(slug, need_open=True)
+    back = request.form.get("next") or url_for("board.communi", slug=slug)
+    if not back.startswith("/") or back.startswith("//"):
+        back = url_for("board.communi", slug=slug)
+    if request.form.get("leave"):
+        if g.user.id == community.creator_id:
+            flash("커뮤니티 관리자는 자기 커뮤니티에서 탈퇴할 수 없어요.", "error")
+        else:
+            community.members.filter_by(user_id=g.user.id).delete()
+            CommunityStaff.query.filter_by(community_id=community.id, user_id=g.user.id).delete()  # 탈퇴하면 부관리자도 해제
+            db.session.commit()
+            flash(f"'{community.name}' 커뮤니티에서 탈퇴했어요.", "info")
+        return redirect(back)
+    try:
+        db.session.add(CommunityMember(community_id=community.id, user_id=g.user.id))
+        db.session.commit()
+        flash(f"'{community.name}' 커뮤니티에 가입했어요!", "success")
+    except IntegrityError:
+        db.session.rollback()
+    return redirect(back)
 
 
 @bp.route("/c/<slug>/manage", methods=["GET", "POST"])

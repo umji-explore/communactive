@@ -48,6 +48,16 @@
             <button class="link-btn">로그아웃</button>
           </form>
         </div>
+        <div class="lb-joined">
+          <div class="lb-joined-title">내 커뮤니티</div>
+          {% if joined %}
+          <ul class="communi-chips">
+            {% for c in joined %}<li><a href="{{ url_for('board.communi', slug=c.slug) }}">{{ c.name }}</a></li>{% endfor %}
+          </ul>
+          {% else %}
+          <p class="muted small">아직 가입한 커뮤니티가 없어요. 커뮤니티 위쪽의 <strong>+ 가입</strong>을 눌러보세요.</p>
+          {% endif %}
+        </div>
       {% else %}
         <form method="post" action="{{ url_for('auth.login') }}" class="lb-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

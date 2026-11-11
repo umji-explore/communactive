@@ -58,6 +58,13 @@ def upgrade(db):
                 if table in tables:
                     conn.execute(text(f'ALTER TABLE "{table}" ALTER COLUMN user_id DROP NOT NULL'))
 
+        # 커뮤니티를 만든 사람은 자동으로 가입 (예전에 만든 커뮤니티 포함, 여러 번 실행해도 안전)
+        if "community_member" in set(inspect(engine).get_table_names()):
+            conn.execute(text(
+                "INSERT INTO community_member (community_id, user_id, created_at) "
+                "SELECT c.id, c.creator_id, CURRENT_TIMESTAMP FROM community c WHERE c.creator_id IS NOT NULL "
+                "AND NOT EXISTS (SELECT 1 FROM community_member m WHERE m.community_id = c.id AND m.user_id = c.creator_id)"))
+
         # 회원별 글 수 채우기 (장로 회원 판정용) — 컬럼을 처음 만들었을 때 한 번
         if ("user", "post_count") in added:
             conn.execute(text('UPDATE "user" SET post_count = (SELECT COUNT(*) FROM post WHERE post.user_id = "user".id)'))

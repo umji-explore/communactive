@@ -6,7 +6,7 @@ from flask import (Blueprint, Response, current_app, flash, g, redirect, render_
 
 from uploads import owned_upload
 
-from models import Comment, Community, ConPack, PointLog, Post, UserConPack, db, utcnow
+from models import Comment, Community, CommunityMember, ConPack, PointLog, Post, UserConPack, db, utcnow
 from utils import login_required, period_best, realtime_best
 
 bp = Blueprint("main", __name__)
@@ -27,6 +27,16 @@ def hot_communities(limit=10):
     )
 
 
+def joined_communities(user, limit=None):
+    """내가 가입한 (승인된) 커뮤니티"""
+    if user is None:
+        return []
+    q = (Community.query.join(CommunityMember, CommunityMember.community_id == Community.id)
+         .filter(CommunityMember.user_id == user.id, Community.status == "approved")
+         .order_by(CommunityMember.id.desc()))
+    return q.limit(limit).all() if limit else q.all()
+
+
 @bp.route("/")
 def home():
     return render_template(
@@ -35,6 +45,7 @@ def home():
         daily=period_best(1, 15),
         weekly=period_best(7, 15),
         hot=hot_communities(),
+        joined=joined_communities(g.user, 12),
         new_cons=ConPack.query.order_by(ConPack.id.desc()).limit(6).all(),
         latest=Post.query.order_by(Post.id.desc()).limit(15).all(),
     )
@@ -151,4 +162,4 @@ def mypage():
         "comments": Comment.query.filter_by(user_id=g.user.id).count(),
         "community": Community.query.filter_by(creator_id=g.user.id).first(),
     }
-    return render_template("mypage.html", logs=logs, packs=packs, stats=stats)
+    return render_template("mypage.html", logs=logs, packs=packs, stats=stats, joined=joined_communities(g.user))
