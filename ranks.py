@@ -8,7 +8,7 @@
 익명           회색 (+ IP 앞 두 자리)
 계급은 커뮤니티마다 다르다 (A 커뮤니티 관리자가 B 커뮤니티에선 일반 회원).
 """
-from flask import current_app
+from flask import current_app, url_for
 from markupsafe import Markup, escape
 
 RANKS = {
@@ -52,8 +52,8 @@ def public_name(user):
     return "관리자" if user.is_admin else user.nickname
 
 
-def name_tag(obj, community=None):
-    """글/댓글(또는 회원)의 이름표 HTML"""
+def name_tag(obj, community=None, link=True):
+    """글/댓글(또는 회원)의 이름표 HTML. 회원이면 누르면 프로필로 간다 (link=False 면 링크 없음)."""
     user = obj if hasattr(obj, "nickname") else obj.author  # 회원 객체를 직접 넘겨도 되고, 글/댓글을 넘겨도 됨
     if user is None:
         name = getattr(obj, "anon_name", None) or "ㅇㅇ"
@@ -62,6 +62,9 @@ def name_tag(obj, community=None):
         return Markup(f'<span class="nick rank-anon" title="익명">{escape(name)}{tail}</span>')
     key = rank_of(user, community)
     label, cls = RANKS[key]
-    if key == "admin":  # 실제 닉네임은 비공개
+    if key == "admin":  # 실제 닉네임과 프로필은 비공개 (링크도 없음)
         return Markup(f'<span class="nick {cls}" title="{label}">관리자</span>')
+    if link and user.username:  # 탈퇴한 회원은 프로필 링크 없음
+        return Markup(f'<a class="nick {cls}" title="{label} · 프로필 보기" href="{url_for("main.profile", user_id=user.id)}">'
+                      f'{escape(user.nickname)}</a>')
     return Markup(f'<span class="nick {cls}" title="{label}">{escape(user.nickname)}</span>')

@@ -51,6 +51,20 @@
   </section>
 </div>
 
+<section class="card" id="privacy">
+  <div class="card-head">
+    <h2 class="card-title">활동 공개 설정</h2>
+    <a class="more" href="{{ url_for('main.profile', user_id=g.user.id) }}">내 프로필 보기 ›</a>
+  </div>
+  <p class="small muted">공개로 두면 다른 사람이 내 닉네임을 눌렀을 때 내가 쓴 글과 댓글 목록을 볼 수 있어요.</p>
+  <form method="post" action="{{ url_for('main.set_privacy') }}" class="privacy-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="check"><input type="radio" name="private" value="0" {{ 'checked' if not g.user.profile_private }}> 공개</label>
+    <label class="check"><input type="radio" name="private" value="1" {{ 'checked' if g.user.profile_private }}> 비공개 <span class="muted small">(글·댓글 목록을 나만 봐요)</span></label>
+    <button class="btn btn-sm">저장</button>
+  </form>
+</section>
+
 <section class="card">
   <h2 class="card-title">가입한 커뮤니티 <span class="muted small">{{ joined|length }}</span></h2>
   {% if joined %}

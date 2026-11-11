@@ -1,12 +1,12 @@
 """홈 (전체 베스트) / 마이페이지 / 약관"""
 from datetime import timedelta
 
-from flask import (Blueprint, Response, current_app, flash, g, redirect, render_template, request,
+from flask import (Blueprint, Response, abort, current_app, flash, g, redirect, render_template, request,
                    send_from_directory, url_for)
 
 from uploads import owned_upload
 
-from models import Comment, Community, CommunityMember, ConPack, PointLog, Post, UserConPack, db, utcnow
+from models import Comment, Community, CommunityMember, ConPack, PointLog, Post, User, UserConPack, db, utcnow
 from utils import login_required, period_best, realtime_best
 
 bp = Blueprint("main", __name__)
@@ -88,7 +88,7 @@ def robots():
         "Allow: /",
         "Disallow: /me", "Disallow: /login", "Disallow: /signup", "Disallow: /forgot", "Disallow: /welcome",
         "Disallow: /admin/", "Disallow: /upload", "Disallow: /captcha.png", "Disallow: /search",
-        "Disallow: /c/*/write", "Disallow: /c/*/edit", "Disallow: /c/*/manage",
+        "Disallow: /c/*/write", "Disallow: /c/*/edit", "Disallow: /c/*/manage", "Disallow: /u/",
         "",
         f"Sitemap: {site}/sitemap.xml",
         "",
@@ -131,6 +131,46 @@ def sitemap():
     resp = Response("\n".join(lines), mimetype="application/xml")
     resp.headers["Cache-Control"] = "public, max-age=1800"
     return resp
+
+
+@bp.route("/u/<int:user_id>")
+def profile(user_id):
+    """회원 프로필: 쓴 글 / 댓글 (비공개로 할 수 있음)"""
+    user = db.session.get(User, user_id) or abort(404)
+    is_self = g.user is not None and g.user.id == user.id
+    if user.is_admin and not is_self:
+        abort(404)  # 사이트 관리자 계정은 존재 자체를 드러내지 않는다
+    tab = "comments" if request.args.get("tab") == "comments" else "posts"
+    page = request.args.get("page", 1, type=int)
+    hidden = None
+    if user.username is None:
+        hidden = "탈퇴한 회원이에요."
+    elif user.profile_private and not is_self and not (g.user and g.user.is_admin):
+        hidden = "비공개 계정이에요. 이 회원의 활동은 볼 수 없어요."
+    pagination = None
+    if not hidden:
+        if tab == "posts":
+            q = (Post.query.join(Community, Community.id == Post.community_id)
+                 .filter(Post.user_id == user.id, Community.status == "approved").order_by(Post.id.desc()))
+        else:
+            q = (Comment.query.join(Post, Post.id == Comment.post_id)
+                 .join(Community, Community.id == Post.community_id)
+                 .filter(Comment.user_id == user.id, Community.status == "approved").order_by(Comment.id.desc()))
+        pagination = q.paginate(page=page, per_page=20, error_out=False)
+    counts = {"posts": Post.query.filter_by(user_id=user.id).count(),
+              "comments": Comment.query.filter_by(user_id=user.id).count()}
+    return render_template("profile.html", person=user, tab=tab, pagination=pagination, hidden=hidden,
+                           counts=counts, is_self=is_self)
+
+
+@bp.route("/me/privacy", methods=["POST"])
+@login_required
+def set_privacy():
+    g.user.profile_private = request.form.get("private") == "1"
+    db.session.commit()
+    flash("활동을 비공개로 바꿨어요. 다른 사람은 내 글·댓글 목록을 볼 수 없어요." if g.user.profile_private
+          else "활동을 공개로 바꿨어요. 다른 사람이 내 프로필에서 글·댓글을 볼 수 있어요.", "info")
+    return redirect(url_for("main.mypage"))
 
 
 @bp.route("/me/avatar", methods=["POST"])

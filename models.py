@@ -27,6 +27,7 @@ class User(db.Model):
     failed_logins = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime)
     post_count = db.Column(db.Integer, default=0, nullable=False)  # 장로 회원(글 500개 이상) 판정용
+    profile_private = db.Column(db.Boolean, default=False, nullable=False)  # 활동(글·댓글) 비공개
 
     def owns_pack(self, pack_id):
         return UserConPack.query.filter_by(user_id=self.id, pack_id=pack_id).first() is not None

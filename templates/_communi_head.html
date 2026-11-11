@@ -6,7 +6,14 @@
     <div class="ch-text">
       <h1><a href="{{ url_for('board.communi', slug=community.slug) }}">{{ community.name }} 커뮤니티</a></h1>
       {% if not slim and community.description %}<p>{{ community.description }}</p>{% endif %}
-      {% if not slim %}<p class="ch-count">회원 {{ community.member_count|comma }}명</p>{% endif %}
+      {% if not slim %}
+      <p class="ch-staff">
+        {% if community.creator %}<span class="ch-role">관리자</span> {{ name_tag(community.creator, community) }}{% endif %}
+        {% if community.staff %}<span class="ch-sep">·</span><span class="ch-role">부관리자</span>
+          {% for s in community.staff %}{{ name_tag(s.user, community) }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}
+        <span class="ch-sep">·</span><span class="ch-count">회원 {{ community.member_count|comma }}명</span>
+      </p>
+      {% endif %}
     </div>
   </div>
   <div class="ch-actions">

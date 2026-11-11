@@ -692,3 +692,26 @@ a.cat:hover { text-decoration: none; color: var(--text); }
 .lb-joined-title { font-size: 12px; font-weight: 700; color: var(--sub); margin-bottom: 6px; }
 .lb-joined .communi-chips a { font-size: 12px; padding: 2px 8px; }
 .lb-joined p { margin: 0; }
+
+/* ================= 관리자 표시 · 프로필 ================= */
+.ch-staff { margin: 4px 0 0 !important; font-size: 12px !important; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.ch-role { color: var(--muted); font-size: 11px; }
+.ch-sep { color: var(--muted); margin: 0 2px; }
+.communi-head.has-banner .ch-staff .nick, .communi-head.has-banner .ch-role, .communi-head.has-banner .ch-sep,
+.communi-head.has-banner .ch-count { text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.communi-head.has-banner .ch-role, .communi-head.has-banner .ch-sep, .communi-head.has-banner .ch-count { color: #eee; }
+a.nick:hover { text-decoration: underline; }
+.profile-card .profile-head { margin-bottom: 0; }
+.profile-card .profile-head > div { flex: 1; min-width: 0; }
+.profile-card .card-title { margin-bottom: 4px; }
+.profile-card p { margin: 0; }
+.profile-edit { align-self: flex-start; }
+.private-badge { font-size: 11px; font-weight: 600; color: var(--sub); border: 1px solid var(--line); border-radius: 3px; padding: 0 6px; }
+.profile-comments { list-style: none; margin: 10px 0 0; padding: 0; }
+.profile-comments li { border-bottom: 1px solid var(--line-soft); }
+.profile-comments a { display: flex; flex-direction: column; gap: 2px; padding: 10px 4px; }
+.profile-comments a:hover { background: var(--row-hover); text-decoration: none; }
+.pc-body { font-size: 14px; word-break: break-word; }
+.privacy-form { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.privacy-form .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.card > .tabs { display: inline-flex; margin-bottom: 10px; }

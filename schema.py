@@ -27,6 +27,7 @@ NEW_COLUMNS = [
     ("comment", "anon_pw_hash", "VARCHAR(255)", "VARCHAR(255)"),
     ("comment", "anon_ip", "VARCHAR(64)", "VARCHAR(64)"),
     ("user", "post_count", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"),
+    ("user", "profile_private", "BOOLEAN NOT NULL DEFAULT FALSE", "BOOLEAN NOT NULL DEFAULT 0"),
     # 이미 있던 커뮤니티는 승인된 것으로 (새로 만드는 커뮤니티만 승인 대기)
     ("community", "status", "VARCHAR(10) NOT NULL DEFAULT 'approved'", "VARCHAR(10) NOT NULL DEFAULT 'approved'"),
 ]

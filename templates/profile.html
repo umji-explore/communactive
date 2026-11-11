@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, pager %}
+{% block title %}{{ person.nickname if person.username else '탈퇴한 회원' }} 님의 프로필 - {% endblock %}
+{% block content %}
+<section class="card profile-card">
+  <div class="profile-head">
+    {{ avatar(person, 64) }}
+    <div>
+      <h1 class="card-title">{{ name_tag(person, link=False) }}
+        {% if person.profile_private %}<span class="private-badge" title="활동 비공개">🔒 비공개</span>{% endif %}</h1>
+      {% if person.username %}
+      <p class="muted small">가입 {{ person.created_at|full_time }}{% if not hidden %} · 글 {{ counts.posts|comma }} · 댓글 {{ counts.comments|comma }}{% endif %}</p>
+      {% endif %}
+    </div>
+    {% if is_self %}<a class="btn btn-light btn-sm profile-edit" href="{{ url_for('main.mypage') }}#privacy">공개 설정</a>{% endif %}
+  </div>
+  {% if is_self and person.profile_private %}
+  <div class="flash flash-info">내 활동은 <strong>비공개</strong>예요. 다른 사람에게는 "비공개 계정"으로만 보여요. (지금은 나만 볼 수 있어요)</div>
+  {% endif %}
+</section>
+
+{% if hidden %}
+<section class="card"><p class="empty">{{ hidden }}</p></section>
+{% else %}
+<section class="card">
+  <div class="tabs">
+    <a href="{{ url_for('main.profile', user_id=person.id) }}" class="{{ 'on' if tab == 'posts' }}">쓴 글</a>
+    <a href="{{ url_for('main.profile', user_id=person.id, tab='comments') }}" class="{{ 'on' if tab == 'comments' }}">쓴 댓글</a>
+  </div>
+  {% if tab == 'posts' %}
+  <table class="post-table">
+    <thead><tr><th>제목</th><th class="col-author">커뮤니티</th><th class="col-date">작성일</th><th class="col-num">추천</th></tr></thead>
+    <tbody>
+      {% for p in pagination.items %}
+      <tr>
+        <td class="col-title">
+          <a href="{{ url_for('board.post', slug=p.community.slug, post_id=p.id) }}">
+            {% if p.board %}<span class="cat">[{{ p.board.name }}]</span>{% endif %}{{ p.title }}</a>
+          {% if p.comment_count %}<span class="cmt">[{{ p.comment_count }}]</span>{% endif %}
+          <div class="mobile-meta">{{ p.community.name }} · {{ p.created_at|short_time }} · 추천 {{ p.upvotes }}</div>
+        </td>
+        <td class="col-author"><a href="{{ url_for('board.communi', slug=p.community.slug) }}">{{ p.community.name }}</a></td>
+        <td class="col-date">{{ p.created_at|short_time }}</td>
+        <td class="col-num">{{ p.upvotes }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">쓴 글이 없어요.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <ul class="profile-comments">
+    {% for c in pagination.items %}
+    <li>
+      <a href="{{ url_for('board.post', slug=c.post.community.slug, post_id=c.post_id) }}#c{{ c.id }}">
+        <span class="pc-body">{% if c.content %}{{ c.content|truncate(120, True, '…') }}{% else %}(커뮤콘){% endif %}</span>
+        <span class="muted small">{{ c.post.community.name }} · {{ c.post.title|truncate(40, True, '…') }} · {{ c.created_at|short_time }}</span>
+      </a>
+    </li>
+    {% else %}
+    <li class="empty">쓴 댓글이 없어요.</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {{ pager(pagination, 'main.profile', user_id=person.id, tab=tab if tab != 'posts' else None) }}
+</section>
+{% endif %}
+{% endblock %}
