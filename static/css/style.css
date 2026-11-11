@@ -715,3 +715,37 @@ a.nick:hover { text-decoration: underline; }
 .privacy-form { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .privacy-form .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .card > .tabs { display: inline-flex; margin-bottom: 10px; }
+
+/* ================= 알림 · 답글 ================= */
+.noti-bell { position: relative; display: inline-flex; align-items: center; gap: 2px; }
+.noti-bell .bell-label { margin-left: 2px; }
+.noti-count { display: inline-block; min-width: 16px; padding: 0 4px; margin-left: 3px; border-radius: 8px; background: var(--point); color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
+.noti-list { list-style: none; margin: 0; padding: 0; }
+.noti-list li { border-bottom: 1px solid var(--line-soft); }
+.noti-list a { display: flex; align-items: baseline; gap: 10px; padding: 11px 6px; }
+.noti-list a:hover { background: var(--row-hover); text-decoration: none; }
+.noti-list li.unread a { background: var(--row-hover); }
+.noti-list li.unread .noti-msg { font-weight: 700; }
+.noti-kind { flex: 0 0 auto; font-size: 11px; font-weight: 700; border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; color: var(--sub); }
+.noti-kind.k-comment, .noti-kind.k-reply { color: var(--point); border-color: var(--point); }
+.noti-kind.k-notice { color: var(--text); border-color: var(--text); }
+.noti-msg { flex: 1; min-width: 0; word-break: break-word; font-size: 13px; }
+.noti-time { flex: 0 0 auto; font-size: 12px; color: var(--muted); }
+.noti-menu { position: relative; display: inline-block; }
+.noti-menu summary { list-style: none; cursor: pointer; }
+.noti-menu summary::-webkit-details-marker { display: none; }
+.noti-menu-box { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; width: 200px; background: var(--card); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 18px rgba(0,0,0,.15); padding: 4px; display: flex; flex-direction: column; }
+.noti-menu-box button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 7px 10px; border: 0; background: none;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius); text-shadow: none; }
+.noti-menu-box button:hover, .noti-menu-box button.on { background: var(--row-hover); }
+.noti-menu-box button.on strong::after { content: " ✓"; }
+.noti-menu-box small { color: var(--muted); font-size: 11px; }
+.comment-list li.is-reply { padding-left: 34px; position: relative; background: var(--row-hover); }
+.comment-list li.is-reply::before { content: "ㄴ"; position: absolute; left: 14px; top: 10px; color: var(--muted); font-size: 12px; }
+.reply-chip { font-size: 12px; color: var(--sub); display: flex; align-items: center; gap: 6px; }
+.reply-chip[hidden] { display: none; }
+.reply-chip span { font-weight: 700; }
+@media (max-width: 640px) { .noti-bell .bell-label { display: none; } }
+.communi-head { overflow: visible; }

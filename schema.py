@@ -28,6 +28,9 @@ NEW_COLUMNS = [
     ("comment", "anon_ip", "VARCHAR(64)", "VARCHAR(64)"),
     ("user", "post_count", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"),
     ("user", "profile_private", "BOOLEAN NOT NULL DEFAULT FALSE", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("user", "notify_comments", "BOOLEAN NOT NULL DEFAULT TRUE", "BOOLEAN NOT NULL DEFAULT 1"),
+    ("comment", "parent_id", "INTEGER", "INTEGER"),
+    ("community_member", "notify", "VARCHAR(10) NOT NULL DEFAULT 'notice'", "VARCHAR(10) NOT NULL DEFAULT 'notice'"),
     # 이미 있던 커뮤니티는 승인된 것으로 (새로 만드는 커뮤니티만 승인 대기)
     ("community", "status", "VARCHAR(10) NOT NULL DEFAULT 'approved'", "VARCHAR(10) NOT NULL DEFAULT 'approved'"),
 ]
@@ -62,8 +65,8 @@ def upgrade(db):
         # 커뮤니티를 만든 사람은 자동으로 가입 (예전에 만든 커뮤니티 포함, 여러 번 실행해도 안전)
         if "community_member" in set(inspect(engine).get_table_names()):
             conn.execute(text(
-                "INSERT INTO community_member (community_id, user_id, created_at) "
-                "SELECT c.id, c.creator_id, CURRENT_TIMESTAMP FROM community c WHERE c.creator_id IS NOT NULL "
+                "INSERT INTO community_member (community_id, user_id, created_at, notify) "
+                "SELECT c.id, c.creator_id, CURRENT_TIMESTAMP, 'notice' FROM community c WHERE c.creator_id IS NOT NULL "
                 "AND NOT EXISTS (SELECT 1 FROM community_member m WHERE m.community_id = c.id AND m.user_id = c.creator_id)"))
 
         # 회원별 글 수 채우기 (장로 회원 판정용) — 컬럼을 처음 만들었을 때 한 번

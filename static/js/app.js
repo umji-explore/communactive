@@ -264,3 +264,28 @@ document.querySelectorAll("[data-tabs]").forEach((box) => {
     });
   });
 })();
+
+// ---------- 댓글 답글 ----------
+(() => {
+  const form = document.getElementById("comment-form");
+  if (!form) return;
+  const input = form.querySelector(".reply-to");
+  const chip = form.querySelector(".reply-chip");
+  const ta = form.querySelector("textarea[name=content]");
+  document.querySelectorAll("[data-reply]").forEach((btn) => btn.addEventListener("click", () => {
+    input.value = btn.dataset.reply;
+    chip.querySelector("span").textContent = `${btn.dataset.name}님에게 답글`;
+    chip.hidden = false;
+    form.scrollIntoView({ behavior: "smooth", block: "center" });
+    ta.focus({ preventScroll: true });
+  }));
+  chip.querySelector(".reply-cancel").addEventListener("click", () => {
+    input.value = "";
+    chip.hidden = true;
+  });
+})();
+
+// 알림 메뉴: 바깥을 누르면 닫기
+document.addEventListener("click", (e) => {
+  document.querySelectorAll("details.noti-menu[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; });
+});

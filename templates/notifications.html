@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pager %}
+{% block title %}알림 - {% endblock %}
+{% block content %}
+<section class="card">
+  <div class="card-head">
+    <h1 class="card-title">🔔 알림</h1>
+    <div class="row">
+      <form method="post" action="{{ url_for('notify.read_all') }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-light btn-sm">모두 읽음</button>
+      </form>
+      <form method="post" action="{{ url_for('notify.clear') }}" class="inline" data-confirm="알림을 모두 지울까요?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-light btn-sm">모두 지우기</button>
+      </form>
+    </div>
+  </div>
+  <ul class="noti-list">
+    {% for n in pagination.items %}
+    <li class="{{ 'unread' if not n.is_read }}">
+      <a href="{{ url_for('notify.go', nid=n.id) }}">
+        <span class="noti-kind k-{{ n.kind }}">{{ {'comment': '댓글', 'reply': '답글', 'notice': '공지', 'new_post': '새 글', 'approved': '승인'}.get(n.kind, '알림') }}</span>
+        <span class="noti-msg">{{ n.message }}</span>
+        <span class="noti-time">{{ n.created_at|short_time }}</span>
+      </a>
+    </li>
+    {% else %}
+    <li class="empty">새 알림이 없어요.</li>
+    {% endfor %}
+  </ul>
+  {{ pager(pagination, 'notify.index') }}
+</section>
+
+<section class="card">
+  <h2 class="card-title">알림 설정</h2>
+  <form method="post" action="{{ url_for('notify.settings') }}" class="privacy-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <span class="small">내 글에 댓글, 내 댓글에 답글이 달리면</span>
+    <label class="check"><input type="radio" name="notify_comments" value="1" {{ 'checked' if g.user.notify_comments }}> 알림 받기</label>
+    <label class="check"><input type="radio" name="notify_comments" value="0" {{ 'checked' if not g.user.notify_comments }}> 받지 않기</label>
+    <button class="btn btn-sm">저장</button>
+  </form>
+  <p class="small muted">커뮤니티 공지·새 글 알림은 각 커뮤니티 위쪽의 🔔 버튼에서 커뮤니티마다 정할 수 있어요.</p>
+</section>
+{% endblock %}

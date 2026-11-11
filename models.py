@@ -28,6 +28,7 @@ class User(db.Model):
     locked_until = db.Column(db.DateTime)
     post_count = db.Column(db.Integer, default=0, nullable=False)  # 장로 회원(글 500개 이상) 판정용
     profile_private = db.Column(db.Boolean, default=False, nullable=False)  # 활동(글·댓글) 비공개
+    notify_comments = db.Column(db.Boolean, default=True, nullable=False)   # 내 글/댓글에 댓글이 달리면 알림
 
     def owns_pack(self, pack_id):
         return UserConPack.query.filter_by(user_id=self.id, pack_id=pack_id).first() is not None
@@ -144,6 +145,7 @@ class Comment(db.Model):
     anon_ip = db.Column(db.String(64))
     content = db.Column(db.Text, default="")
     con_item_id = db.Column(db.Integer, db.ForeignKey("con_item.id"))
+    parent_id = db.Column(db.Integer, db.ForeignKey("comment.id"), index=True)  # 답글이면 원래 댓글
     points_awarded = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
 
@@ -206,6 +208,7 @@ class CommunityMember(db.Model):
     community_id = db.Column(db.Integer, db.ForeignKey("community.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    notify = db.Column(db.String(10), default="notice", nullable=False)  # off / notice(공지만) / all(새 글 전부)
 
     community = db.relationship("Community", lazy="joined", overlaps="members")
 
@@ -326,6 +329,17 @@ class PollVote(db.Model):
     @property
     def option_set(self):
         return {int(x) for x in self.option_ids.split(",") if x}
+
+
+class Notification(db.Model):
+    """알림 (내 글·댓글에 달린 댓글, 가입한 커뮤니티의 공지·새 글, 커뮤니티 승인 등)"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, index=True)
+    kind = db.Column(db.String(20), nullable=False)  # comment / reply / notice / new_post / approved
+    message = db.Column(db.String(300), nullable=False)
+    link = db.Column(db.String(300), default="")
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False, index=True)
 
 
 class PointLog(db.Model):

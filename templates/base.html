@@ -10,7 +10,7 @@
   <meta name="description" content="{% block description %}커뮤넥티브(communactive) - 누구나 만드는 커뮤니티. 실시간·일간·주간 베스트, 익명 글쓰기, 직접 만드는 커뮤콘.{% endblock %}">
   {# 검색에 나올 필요 없는 화면(로그인, 글쓰기, 관리, 검색 결과, 승인 전 커뮤니티 등)은 noindex #}
   {% set noindex = ep in ('board.search', 'auth.login', 'auth.signup', 'auth.forgot', 'auth.welcome', 'main.mypage',
-                          'board.write', 'board.edit', 'board.manage', 'admin.index', 'cons.new', 'main.profile')
+                          'board.write', 'board.edit', 'board.manage', 'admin.index', 'cons.new', 'main.profile', 'notify.index')
                    or code is defined or (community is defined and community and not community.approved) %}
   {% if noindex %}<meta name="robots" content="noindex, nofollow">{% endif %}
   {% set canonical = config.SITE_URL ~ (request.full_path.rstrip('?') if request.args.get('page') or request.args.get('board') else request.path) %}
@@ -44,7 +44,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   {# 로고 글자 전용 폰트: 로고에 쓰는 글자만 받아서 아주 가볍다 #}
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@1,900&text=communactive&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=12">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=13">
 </head>
 <body>
 {# 로고 옆 섹션 이름 (디시의 "dcinside | ○○ 갤러리" 처럼) #}
@@ -83,6 +83,7 @@
       {% if g.user %}
         <a class="top-nick" href="{{ url_for('main.mypage') }}">{{ g.user.nickname }}{% if g.user.is_admin %} <span class="admin-badge">관리자</span>{% endif %}</a>
         <a class="points" href="{{ url_for('main.mypage') }}" title="내 포인트">{{ g.user.points|comma }}P</a>
+        <a class="top-link noti-bell" href="{{ url_for('notify.index') }}" title="알림">🔔<span class="bell-label">알림</span>{% if unread_notis %}<span class="noti-count">{{ unread_notis if unread_notis < 100 else '99+' }}</span>{% endif %}</a>
         {% if g.user.is_admin %}<a class="top-link" href="{{ url_for('admin.index') }}">사이트 관리</a>{% endif %}
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -122,6 +123,6 @@
     <span>Copyright © communactive. All rights reserved.</span>
   </div>
 </footer>
-<script src="{{ url_for('static', filename='js/app.js') }}?v=9"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=13"></script>
 </body>
 </html>

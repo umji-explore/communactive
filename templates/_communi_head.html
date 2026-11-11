@@ -21,6 +21,16 @@
       {% if not g.user %}
         <a class="btn btn-light btn-sm join-btn" href="{{ url_for('auth.login', next=request.path) }}">+ 가입</a>
       {% elif community.has_member(g.user) %}
+        {% set my_m = community.members.filter_by(user_id=g.user.id).first() %}
+        <details class="noti-menu">
+          <summary class="btn btn-light btn-sm" title="이 커뮤니티 알림">🔔 {{ {'off': '알림 끔', 'notice': '공지만', 'all': '새 글 전부'}[my_m.notify] }}</summary>
+          <form method="post" action="{{ url_for('board.notify_level', slug=community.slug) }}" class="noti-menu-box">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button name="level" value="all" class="{{ 'on' if my_m.notify == 'all' }}"><strong>새 글 전부</strong><small>새 글이 올라올 때마다</small></button>
+            <button name="level" value="notice" class="{{ 'on' if my_m.notify == 'notice' }}"><strong>공지만</strong><small>공지가 올라올 때만</small></button>
+            <button name="level" value="off" class="{{ 'on' if my_m.notify == 'off' }}"><strong>끄기</strong><small>알림 받지 않기</small></button>
+          </form>
+        </details>
         {% if g.user.id != community.creator_id %}
         <form method="post" action="{{ url_for('board.join', slug=community.slug) }}" class="inline" data-confirm="'{{ community.name }}' 커뮤니티에서 탈퇴할까요?">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

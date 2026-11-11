@@ -12,6 +12,7 @@ import captcha
 import cons
 import embeds
 import main
+import notify
 import ranks
 import schema
 import uploads
@@ -37,7 +38,7 @@ def create_app(config_class=Config):
     app.jinja_env.globals["name_tag"] = ranks.name_tag
     app.jinja_env.filters["public_name"] = ranks.public_name
 
-    for module in (main, auth, board, cons, captcha, uploads, embeds, admin):
+    for module in (main, auth, board, cons, captcha, uploads, embeds, admin, notify):
         app.register_blueprint(module.bp)
 
     @app.before_request
@@ -55,7 +56,8 @@ def create_app(config_class=Config):
 
     @app.context_processor
     def inject_globals():
-        return {"POINTS_POST": app.config["POINTS_POST"], "POINTS_COMMENT": app.config["POINTS_COMMENT"]}
+        return {"POINTS_POST": app.config["POINTS_POST"], "POINTS_COMMENT": app.config["POINTS_COMMENT"],
+                "unread_notis": notify.unread_count(g.get("user"))}
 
     @app.after_request
     def security_headers(resp):

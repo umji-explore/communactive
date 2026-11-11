@@ -6,6 +6,7 @@ from functools import wraps
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
+import notify
 from models import Community, ConPack, Post, User, db
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -39,6 +40,7 @@ def decide_community(cid):
     c = db.session.get(Community, cid) or abort(404)
     if request.form.get("decision") == "approve":
         c.status = "approved"
+        notify.on_community_approved(c)
         db.session.commit()
         flash(f"'{c.name}' 커뮤니티를 승인했어요.", "success")
     elif c.status == "pending":

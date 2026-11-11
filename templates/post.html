@@ -149,15 +149,16 @@
 
 <section class="card comments" id="comments">
   <h3 class="card-title">댓글 <span class="cmt">{{ post.comment_count }}</span></h3>
-  <ul class="comment-list">
-    {% for c in post.comments %}
-    <li id="c{{ c.id }}" class="{{ 'by-op' if c.user_id == post.user_id }}">
+  {% macro comment_li(c, reply=False) %}
+    <li id="c{{ c.id }}" class="{{ 'by-op' if c.user_id and c.user_id == post.user_id }} {{ 'is-reply' if reply }}">
       <div class="c-head">
         {{ avatar(c.author, 22) }}
         <span class="author">{{ name_tag(c, community) }}</span>
         {% if c.user_id and c.user_id == post.user_id %}<span class="op">글쓴이</span>{% endif %}
         <span class="time">{{ c.created_at|full_time }}</span>
         <span class="c-actions">
+        <button type="button" class="link-btn" data-reply="{{ c.id }}"
+                data-name="{{ c.author|public_name if c.author else (c.anon_name or 'ㅇㅇ') }}">답글</button>
         {% if g.user and (g.user.id == c.user_id or g.user.is_admin or is_manager) %}
         <form method="post" action="{{ url_for('board.delete_comment', comment_id=c.id) }}" class="inline"
               data-confirm="댓글을 삭제할까요?{% if c.points_awarded %} 받은 {{ c.points_awarded }}P가 회수됩니다.{% endif %}">
@@ -187,6 +188,12 @@
       {% if c.con_item %}<img class="con-in-comment" src="{{ c.con_item.path|con_url }}" alt="커뮤콘">{% endif %}
       {% if c.content %}<div class="c-body">{{ c.content|nl2br }}</div>{% endif %}
     </li>
+  {% endmacro %}
+  {% set tops = post.comments|selectattr('parent_id', 'none')|list %}
+  <ul class="comment-list">
+    {% for c in tops %}
+      {{ comment_li(c) }}
+      {% for r in post.comments|selectattr('parent_id', 'equalto', c.id) %}{{ comment_li(r, True) }}{% endfor %}
     {% else %}
     <li class="empty">첫 댓글을 남겨보세요.</li>
     {% endfor %}
@@ -195,6 +202,8 @@
   {% if g.user %}
   <form method="post" action="{{ url_for('board.comment', slug=community.slug, post_id=post.id) }}" class="comment-form" id="comment-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="reply_to" class="reply-to">
+    <div class="reply-chip" hidden><span></span> <button type="button" class="link-btn reply-cancel">✕ 답글 취소</button></div>
     <input type="hidden" name="con_id" id="con-id">
     <div class="con-preview" id="con-preview" hidden>
       <img alt=""><button type="button" class="link-btn" id="con-clear">✕ 선택 취소</button>
@@ -232,6 +241,8 @@
   {# 비회원(익명) 댓글 #}
   <form method="post" action="{{ url_for('board.comment', slug=community.slug, post_id=post.id) }}" class="comment-form anon-form" id="comment-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="reply_to" class="reply-to">
+    <div class="reply-chip" hidden><span></span> <button type="button" class="link-btn reply-cancel">✕ 답글 취소</button></div>
     <div class="anon-fields">
       <input name="anon_name" maxlength="12" placeholder="닉네임 (ㅇㅇ)" aria-label="닉네임">
       <input type="password" name="anon_password" minlength="4" maxlength="30" required placeholder="비밀번호 (삭제할 때 필요)" autocomplete="new-password" aria-label="비밀번호">

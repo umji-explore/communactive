@@ -12,6 +12,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 import captcha
 import content as content_mod
+import notify
 from models import (Board, Comment, Community, CommunityMember, CommunityStaff, ConItem, ModRequest, Poll, PollOption, PollVote, Post,
                     Series, User, UserConPack, Vote, db, utcnow)
 from uploads import owned_upload
@@ -176,6 +177,7 @@ def do_delete_comment(c):
     if c.author and c.points_awarded:
         add_points(c.author, -c.points_awarded, "revoke", f"댓글 삭제: {p.title}")
     p.comment_count = Post.comment_count - 1
+    Comment.query.filter_by(parent_id=c.id).update({"parent_id": None}, synchronize_session=False)
     db.session.delete(c)
 
 
@@ -256,6 +258,8 @@ def execute_request(community, req):
                 do_delete_post(p)
             else:
                 p.is_notice = not p.is_notice
+                if p.is_notice:
+                    notify.on_notice(p)
     elif req.action == "delete_comment":
         c = db.session.get(Comment, req.target_id)
         if c and c.post.community_id == community.id:
@@ -324,6 +328,23 @@ def communi_new():
                 return redirect(url_for("board.communi", slug=c.slug))
         flash(error, "error")
     return render_template("communi_new.html", form=form)
+
+
+@bp.route("/c/<slug>/notify", methods=["POST"])
+@login_required
+def notify_level(slug):
+    """가입한 커뮤니티 알림: off / notice(공지만) / all(새 글 전부)"""
+    community = get_community(slug, need_open=True)
+    level = request.form.get("level")
+    m = community.members.filter_by(user_id=g.user.id).first()
+    if not m:
+        flash("먼저 커뮤니티에 가입해 주세요.", "error")
+    elif level in ("off", "notice", "all"):
+        m.notify = level
+        db.session.commit()
+        flash({"off": "이 커뮤니티 알림을 껐어요.", "notice": "이제 공지가 올라오면 알려드려요.",
+               "all": "이제 새 글이 올라올 때마다 알려드려요."}[level], "info")
+    return redirect(url_for("board.communi", slug=slug))
 
 
 @bp.route("/c/<slug>/join", methods=["POST"])
@@ -571,6 +592,7 @@ def _save_post(community, post, form):
             g.user.post_count = User.post_count + 1
             if reward:
                 add_points(g.user, reward, "post", f"글 작성: {title}")
+        notify.on_new_post(post)
     else:
         post.title, post.content, post.text, post.fmt = title, stored, text, "html"
         post.has_image, post.has_video, post.board_id = has_image, has_video, board.id if board else None
@@ -712,8 +734,10 @@ def toggle_notice(slug, post_id):
     if not community.is_manager(g.user):
         abort(403)
     p.is_notice = not p.is_notice
+    if p.is_notice:
+        notify.on_notice(p)
     db.session.commit()
-    flash("공지로 등록했어요." if p.is_notice else "공지를 해제했어요.", "info")
+    flash("공지로 등록했어요. 가입한 회원들에게 알림이 가요." if p.is_notice else "공지를 해제했어요.", "info")
     return redirect(url_for("board.post", slug=slug, post_id=p.id))
 
 
@@ -798,6 +822,12 @@ def comment(slug, post_id):
     content = request.form.get("content", "").strip()
     con_id = request.form.get("con_id", type=int)
     back = url_for("board.post", slug=slug, post_id=p.id) + "#comments"
+    reply_target = None
+    reply_to = request.form.get("reply_to", type=int)
+    if reply_to:
+        reply_target = db.session.get(Comment, reply_to)
+        if not reply_target or reply_target.post_id != p.id:
+            reply_target = None
 
     con = None
     if con_id and g.user:
@@ -824,8 +854,11 @@ def comment(slug, post_id):
         reward = reward_amount(g.user, "comment") if g.user else 0
         c = Comment(post_id=p.id, user_id=g.user.id if g.user else None, content=content,
                     con_item_id=con.id if con else None, points_awarded=reward,
-                    anon_name=anon_name, anon_pw_hash=anon_pw, anon_ip=client_ip() if g.user is None else None)
+                    anon_name=anon_name, anon_pw_hash=anon_pw, anon_ip=client_ip() if g.user is None else None,
+                    parent_id=(reply_target.parent_id or reply_target.id) if reply_target else None)
         db.session.add(c)
+        db.session.flush()
+        notify.on_comment(p, c, reply_target)
         p.comment_count = Post.comment_count + 1
         if g.user:
             g.user.last_comment_at = utcnow()
